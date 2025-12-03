@@ -2,22 +2,51 @@
   "base_url": "https://aknowles.github.io/ssbball",
   "teams": [
     {
-      "id": "milton-5th-boys-white",
-      "team_name": "Milton 5th Grade Boys White",
-      "sites": ["metrowest"],
-      "town": "Milton",
-      "grade": "5th Grade",
-      "gender": "Boys",
-      "team": "White"
+      "id": "milton-5th-boys-white-metrowest",
+      "team_name": "Milton 5th Boys White (MetroWest)",
+      "short_name": "5th Grade (MW)",
+      "client_id": "metrowbb",
+      "team_no": "45323",
+      "league": "MetroWest",
+      "grade": "5th"
     },
     {
-      "id": "milton-8th-boys-white",
-      "team_name": "Milton 8th Grade Boys White",
-      "sites": ["ssybl"],
-      "town": "Milton",
-      "grade": "8th Grade",
-      "gender": "Boys",
-      "team": "White"
+      "id": "milton-5th-boys-white-ssybl",
+      "team_name": "Milton 5th Boys White (SSYBL)",
+      "short_name": "5th Grade (SSYBL)",
+      "client_id": "ssybl",
+      "team_no": "45453",
+      "league": "SSYBL",
+      "grade": "5th"
+    },
+    {
+      "id": "milton-8th-boys-white-ssybl",
+      "team_name": "Milton 8th Boys White (SSYBL)",
+      "short_name": "8th Grade",
+      "client_id": "ssybl",
+      "team_no": "45443",
+      "league": "SSYBL",
+      "grade": "8th"
+    }
+  ],
+  "combined_calendars": [
+    {
+      "id": "all",
+      "name": "All Games",
+      "description": "All teams combined",
+      "filter": {}
+    },
+    {
+      "id": "5th-grade",
+      "name": "5th Grade All",
+      "description": "5th grade - both leagues",
+      "filter": {"grade": "5th"}
+    },
+    {
+      "id": "8th-grade",
+      "name": "8th Grade All",
+      "description": "8th grade games",
+      "filter": {"grade": "8th"}
     }
   ]
 }

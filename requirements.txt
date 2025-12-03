@@ -1,2 +1,1 @@
-selenium>=4.15.0
 icalendar>=5.0.0
