@@ -174,18 +174,23 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
             game_type = item.get('homeaway', item.get('ha', item.get('type', '')))
 
             # Build full location with address
-            venue = item.get('location', item.get('loc', item.get('facility', '')))
-            street = item.get('street', '').strip()
-            citystzip = item.get('citystzip', '').strip()
-            directions = item.get('directions', '').strip()
+            venue = item.get('location', item.get('loc', item.get('facility', ''))) or ''
+            venue = str(venue).strip()
+            street = str(item.get('street', '') or '').strip()
+            citystzip = str(item.get('citystzip', '') or '').strip()
+            directions = str(item.get('directions', '') or '').strip()
 
             # Combine venue and address
-            location_parts = [venue]
+            location_parts = []
+            if venue:
+                location_parts.append(venue)
             if street and citystzip:
                 location_parts.append(f"{street}, {citystzip}")
+            elif street:
+                location_parts.append(street)
             elif citystzip:
                 location_parts.append(citystzip)
-            location = ' - '.join(filter(None, location_parts))
+            location = ' - '.join(location_parts)
 
             if not date_str:
                 continue
@@ -292,7 +297,7 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
             event.add('summary', f"{prefix}🏀 vs {opponent}")
 
         event.add('dtstart', game['datetime'])
-        event.add('dtend', game['datetime'] + timedelta(hours=1, minutes=30))
+        event.add('dtend', game['datetime'] + timedelta(hours=1))
 
         if game.get('location'):
             event.add('location', game['location'])
@@ -311,11 +316,19 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
         event.add('description', '\n'.join(desc))
         event.add('dtstamp', datetime.now(EASTERN))
 
-        alarm = Alarm()
-        alarm.add('action', 'DISPLAY')
-        alarm.add('trigger', timedelta(hours=-1))
-        alarm.add('description', f'Basketball game vs {opponent} in 1 hour')
-        event.add_component(alarm)
+        # 1 hour reminder
+        alarm1 = Alarm()
+        alarm1.add('action', 'DISPLAY')
+        alarm1.add('trigger', timedelta(hours=-1))
+        alarm1.add('description', f'Basketball game vs {opponent} in 1 hour')
+        event.add_component(alarm1)
+
+        # 30 minute reminder
+        alarm2 = Alarm()
+        alarm2.add('action', 'DISPLAY')
+        alarm2.add('trigger', timedelta(minutes=-30))
+        alarm2.add('description', f'Basketball game vs {opponent} in 30 minutes')
+        event.add_component(alarm2)
 
         cal.add_component(event)
 
