@@ -528,82 +528,157 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
 
 
 def generate_index_html(calendars: list[dict], base_url: str, town_name: str) -> str:
-    """Generate the landing page HTML with collapsible sections by grade."""
+    """Generate the landing page HTML with hierarchical sections: Grade -> Color -> Calendars."""
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
 
-    # Group calendars
-    combined_cals = [c for c in calendars if c.get('type') == 'combined']
-    team_cals = [c for c in calendars if c.get('type') == 'team']
-
-    # Group team calendars by grade
-    grade_groups = defaultdict(list)
-    for cal in team_cals:
-        # Extract grade from calendar id or name
+    def extract_grade(cal):
+        """Extract grade number from calendar."""
         cal_id = cal.get('id', '')
         cal_name = cal.get('name', '')
-        grade = None
-        for g in ['3rd', '4th', '5th', '6th', '7th', '8th', '3', '4', '5', '6', '7', '8']:
+        for g in ['3rd', '4th', '5th', '6th', '7th', '8th']:
             if g in cal_id or g in cal_name:
-                grade = g.replace('th', '').replace('rd', '')
-                break
-        if grade:
-            grade_groups[grade].append(cal)
-        else:
-            grade_groups['Other'].append(cal)
+                return g.replace('th', '').replace('rd', '')
+        for g in ['3', '4', '5', '6', '7', '8']:
+            if f'-{g}th-' in cal_id or f' {g}th ' in cal_name:
+                return g
+        return 'Other'
 
-    def make_card(cal, highlight=False):
+    def extract_color(cal):
+        """Extract team color from calendar."""
+        cal_id = cal.get('id', '').lower()
+        cal_name = cal.get('name', '').lower()
+        for color in ['white', 'red', 'blue', 'black', 'gold', 'green', 'orange', 'purple']:
+            if color in cal_id or color in cal_name:
+                return color.capitalize()
+        return 'Team'
+
+    def extract_gender(cal):
+        """Extract gender from calendar."""
+        cal_id = cal.get('id', '').lower()
+        cal_name = cal.get('name', '').lower()
+        if 'girls' in cal_id or 'girls' in cal_name:
+            return 'Girls'
+        return 'Boys'
+
+    # Group all calendars by grade -> gender -> color
+    grade_gender_color_groups = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
+    for cal in calendars:
+        grade = extract_grade(cal)
+        gender = extract_gender(cal)
+        color = extract_color(cal)
+        grade_gender_color_groups[grade][gender][color].append(cal)
+
+    def make_card(cal, compact=False):
         cal_id = cal.get('id', 'calendar')
         cal_name = cal.get('name', 'Calendar')
+        cal_type = cal.get('type', 'team')
         description = cal.get('description', '')
         games_count = cal.get('games', 0)
         ics_url = f"{base_url}/{cal_id}.ics"
 
-        highlight_class = "highlight" if highlight else ""
+        # Shorter display name for league calendars
+        if cal_type == 'combined':
+            display_name = "⭐ Combined (All Leagues)"
+            highlight_class = "highlight"
+        else:
+            # Extract just the league name
+            league = cal.get('league', '')
+            display_name = f"{league}" if league else cal_name
+            highlight_class = ""
+
         games_info = f"{games_count} games" if games_count else "No games"
 
-        return f'''
-        <div class="calendar-card {highlight_class}">
-            <h3>{cal_name}</h3>
-            <p class="description">{description} &bull; {games_info}</p>
-            <div class="subscribe-url">
-                <code>{ics_url}</code>
-                <button onclick="copyUrl('{ics_url}')" title="Copy URL">📋</button>
+        if compact:
+            return f'''
+            <div class="calendar-card compact {highlight_class}">
+                <div class="card-header">
+                    <span class="card-title">{display_name}</span>
+                    <span class="card-games">{games_info}</span>
+                </div>
+                <div class="card-actions">
+                    <a href="{cal_id}.ics" class="btn btn-sm btn-primary" download>Download</a>
+                    <a href="webcal://{ics_url.replace('https://', '')}" class="btn btn-sm btn-secondary">Subscribe</a>
+                    <button class="btn btn-sm" onclick="copyUrl('{ics_url}')" title="Copy URL">📋</button>
+                </div>
             </div>
-            <div class="buttons">
-                <a href="{cal_id}.ics" class="btn btn-primary" download>Download</a>
-                <a href="webcal://{ics_url.replace('https://', '')}" class="btn btn-secondary">Subscribe</a>
+            '''
+        else:
+            return f'''
+            <div class="calendar-card {highlight_class}">
+                <h3>{cal_name}</h3>
+                <p class="description">{description} &bull; {games_info}</p>
+                <div class="subscribe-url">
+                    <code>{ics_url}</code>
+                    <button onclick="copyUrl('{ics_url}')" title="Copy URL">📋</button>
+                </div>
+                <div class="buttons">
+                    <a href="{cal_id}.ics" class="btn btn-primary" download>Download</a>
+                    <a href="webcal://{ics_url.replace('https://', '')}" class="btn btn-secondary">Subscribe</a>
+                </div>
             </div>
-        </div>
-        '''
+            '''
 
-    combined_html = ''.join(make_card(c, highlight=True) for c in combined_cals)
-
-    # Build collapsible grade sections
+    # Build grade sections
     grade_sections = []
     grade_order = ['3', '4', '5', '6', '7', '8', 'Other']
     grade_labels = {'3': '3rd Grade', '4': '4th Grade', '5': '5th Grade',
                     '6': '6th Grade', '7': '7th Grade', '8': '8th Grade', 'Other': 'Other'}
 
     for grade in grade_order:
-        if grade not in grade_groups:
+        if grade not in grade_gender_color_groups:
             continue
-        cals = grade_groups[grade]
-        total_games = sum(c.get('games', 0) for c in cals)
-        cards_html = ''.join(make_card(c) for c in cals)
+
+        gender_groups = grade_gender_color_groups[grade]
         grade_label = grade_labels.get(grade, grade)
 
-        grade_sections.append(f'''
-        <div class="grade-section">
-            <button class="collapsible" onclick="toggleSection(this)">
-                <span class="grade-title">🏀 {grade_label}</span>
-                <span class="grade-info">{len(cals)} teams &bull; {total_games} games</span>
-                <span class="arrow">▼</span>
-            </button>
-            <div class="collapsible-content">
-                {cards_html}
+        # Build color groups within this grade
+        color_sections = []
+        total_teams = 0
+        total_games = 0
+
+        for gender in ['Boys', 'Girls']:
+            if gender not in gender_groups:
+                continue
+            color_groups = gender_groups[gender]
+
+            for color in sorted(color_groups.keys()):
+                cals = color_groups[color]
+                if not cals:
+                    continue
+
+                # Sort: combined first, then by league name
+                cals_sorted = sorted(cals, key=lambda c: (0 if c.get('type') == 'combined' else 1, c.get('league', '')))
+
+                team_label = f"{gender} {color}"
+                team_games = sum(c.get('games', 0) for c in cals)
+                total_teams += 1
+                total_games += team_games
+
+                cards_html = ''.join(make_card(c, compact=True) for c in cals_sorted)
+
+                color_sections.append(f'''
+                <div class="team-group">
+                    <div class="team-header">{team_label}</div>
+                    <div class="team-calendars">
+                        {cards_html}
+                    </div>
+                </div>
+                ''')
+
+        if color_sections:
+            grade_sections.append(f'''
+            <div class="grade-section">
+                <button class="collapsible" onclick="toggleSection(this)">
+                    <span class="grade-title">🏀 {grade_label}</span>
+                    <span class="grade-info">{total_teams} teams &bull; {total_games} games</span>
+                    <span class="arrow">▼</span>
+                </button>
+                <div class="collapsible-content">
+                    {''.join(color_sections)}
+                </div>
             </div>
-        </div>
-        ''')
+            ''')
 
     grade_html = '\n'.join(grade_sections)
 
@@ -713,8 +788,58 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
             padding: 0 16px;
         }}
         .collapsible-content.open {{
-            max-height: 2000px;
+            max-height: 5000px;
             padding: 16px;
+        }}
+
+        /* Team groups within grades */
+        .team-group {{
+            margin-bottom: 20px;
+        }}
+        .team-header {{
+            font-weight: 700;
+            font-size: 15px;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #ddd;
+        }}
+        .team-calendars {{
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }}
+
+        /* Compact calendar cards */
+        .calendar-card.compact {{
+            padding: 12px 16px;
+            margin-bottom: 0;
+        }}
+        .calendar-card.compact .card-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }}
+        .calendar-card.compact .card-title {{
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a1a2e;
+        }}
+        .calendar-card.compact .card-games {{
+            font-size: 12px;
+            color: #666;
+        }}
+        .calendar-card.compact .card-actions {{
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }}
+        .btn-sm {{
+            padding: 6px 12px;
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
         }}
 
         .instructions {{
@@ -751,12 +876,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 
     <div id="copied" class="copied">URL Copied!</div>
 
-    <h2>📅 Combined Calendars</h2>
-    <p style="color: #666; font-size: 14px;">Best for seeing all games at once</p>
-    {combined_html}
-
-    <h2>🏀 Team Calendars by Grade</h2>
-    <p style="color: #666; font-size: 14px;">Click a grade to expand</p>
+    <h2>🏀 Team Calendars</h2>
+    <p style="color: #666; font-size: 14px;">Click a grade to expand. ⭐ Combined calendars include all leagues.</p>
     {grade_html}
 
     <div class="instructions">
