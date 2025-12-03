@@ -171,69 +171,49 @@ def parse_towns_from_html(html: str) -> dict:
 
 def get_town_id(client_id: str, town_name: str) -> Optional[str]:
     """Look up town ID by fetching and parsing the league page."""
-    # Hardcoded fallback for known towns (IDs are stable across seasons)
-    KNOWN_TOWNS = {
-        'ssybl': {
-            'Abington': '3556', 'Braintree': '3554', 'Carver': '3571',
-            'Cohasset': '3558', 'Duxbury': '3557', 'E.Bridgewater': '3559',
-            'Halifax': '3572', 'Hanover': '3560', 'Hingham': '3562',
-            'Hull': '3563', 'Marshfield': '3564', 'Milton': '3553',
-            'Norwell': '3565', 'Pembroke': '3566', 'Plymouth North': '3567',
-            'Plymouth South': '3602', 'Rockland': '3568', 'Scituate': '3569',
-            'Silver Lake': '3570', 'Weymouth': '3555', 'Whitman-Hanson': '3561'
-        },
-        'metrowbb': {
-            'Acton-Boxborough': '2660', 'Ashland': '2662', 'Bedford': '2663',
-            'Bellingham': '2664', 'Brookline': '2669', 'Canton': '2670',
-            'Concord': '2671', 'Dedham': '2672', 'Dover-Sherborn': '2674',
-            'Foxborough': '2676', 'Framingham': '2677', 'Franklin': '2678',
-            'Holliston': '2681', 'Hopkinton': '2682', 'Lincoln-Sudbury': '2687',
-            'Medfield': '2689', 'Medway': '2690', 'Milford': '2691',
-            'Millis': '2692', 'Milton': '3494', 'Natick': '2694',
-            'Needham': '2695', 'Newton': '2696', 'Norfolk': '2697',
-            'Norwood': '2698', 'Sharon': '2702', 'Sudbury': '2706',
-            'Walpole': '2708', 'Wayland': '2710', 'Wellesley': '2711',
-            'Westwood': '2714', 'Wrentham': '2717'
-        }
-    }
-
     league = LEAGUES.get(client_id)
     if not league:
         logger.error(f"Unknown league: {client_id}")
         return None
 
-    # Check hardcoded fallback first
-    if client_id in KNOWN_TOWNS:
-        for name, tid in KNOWN_TOWNS[client_id].items():
-            if name.lower() == town_name.lower():
-                logger.info(f"Using known town ID: {town_name} = {tid}")
-                return tid
-
-    # Try to fetch and parse the page
+    # Try to fetch and parse the page first (dynamic, always up-to-date)
     logger.info(f"Fetching {league['name']} page to find town ID for {town_name}...")
     html = fetch_url(league['url'])
 
-    if not html:
-        logger.warning(f"Could not fetch {league['url']}, using fallback")
-        return None
+    if html:
+        towns = parse_towns_from_html(html)
+        logger.info(f"Found {len(towns)} towns in {league['name']}")
 
-    towns = parse_towns_from_html(html)
-    logger.info(f"Found {len(towns)} towns in {league['name']}")
+        # Case-insensitive lookup
+        for name, tid in towns.items():
+            if name.lower() == town_name.lower():
+                logger.info(f"Found {town_name} = {tid}")
+                return tid
 
-    # Case-insensitive lookup
-    for name, tid in towns.items():
-        if name.lower() == town_name.lower():
-            logger.info(f"Found {town_name} = {tid}")
-            return tid
+        # Partial match
+        for name, tid in towns.items():
+            if town_name.lower() in name.lower():
+                logger.info(f"Partial match: {town_name} -> {name} = {tid}")
+                return tid
 
-    # Partial match
-    for name, tid in towns.items():
-        if town_name.lower() in name.lower():
-            logger.info(f"Found partial match: {name} = {tid}")
-            return tid
+    # Fallback to hardcoded values only if fetch/parse failed
+    logger.warning(f"Could not find {town_name} dynamically, trying hardcoded fallback...")
+    KNOWN_TOWNS = {
+        'ssybl': {
+            'Milton': '3553',
+        },
+        'metrowbb': {
+            'Milton': '3488',
+        }
+    }
+
+    if client_id in KNOWN_TOWNS:
+        for name, tid in KNOWN_TOWNS[client_id].items():
+            if name.lower() == town_name.lower():
+                logger.info(f"Using fallback town ID: {town_name} = {tid}")
+                return tid
 
     logger.error(f"Town '{town_name}' not found in {league['name']}")
-    logger.debug(f"Available towns: {list(towns.keys())}")
     return None
 
 
