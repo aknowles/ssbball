@@ -5,7 +5,11 @@ Basketball Schedule Scraper for GitHub Actions
 Fetches schedules from sportsite2.com API (used by metrowestbball.com and ssybl.org),
 generates iCal files, and outputs them for GitHub Pages hosting.
 
-No Selenium required - uses direct API calls!
+Features:
+- Dynamic team discovery by town name
+- Parses town IDs from league websites
+- Creates individual and combined calendars
+- No Selenium required - uses direct API calls!
 
 Usage:
     python scraper.py --config teams.json --output docs/
@@ -36,51 +40,191 @@ logger = logging.getLogger(__name__)
 # Eastern timezone for MA basketball leagues
 EASTERN = ZoneInfo("America/New_York")
 
-# API endpoint
-API_URL = "https://sportsite2.com/getTeamSchedule.php"
+# API endpoints
+API_BASE = "https://sportsite2.com"
+TEAM_SCHEDULE_URL = f"{API_BASE}/getTeamSchedule.php"
+TEAM_DISCOVERY_URL = f"{API_BASE}/getTownGenderGradeTeams.php"
+
+# League configurations
+LEAGUES = {
+    'ssybl': {
+        'name': 'SSYBL',
+        'url': 'https://ssybl.org',
+        'origin': 'https://ssybl.org'
+    },
+    'metrowbb': {
+        'name': 'MetroWest',
+        'url': 'https://metrowestbball.com',
+        'origin': 'https://metrowestbball.com'
+    }
+}
+
+
+def get_season() -> str:
+    """Calculate the current season (year)."""
+    now = datetime.now()
+    # Season runs Aug-Mar, so Aug+ is next year's season
+    if now.month >= 8:
+        return str(now.year + 1)
+    return str(now.year)
+
+
+def fetch_url(url: str, headers: dict = None) -> str:
+    """Fetch a URL and return content."""
+    default_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+    if headers:
+        default_headers.update(headers)
+
+    req = urllib.request.Request(url, headers=default_headers)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return response.read().decode('utf-8')
+    except Exception as e:
+        logger.error(f"Failed to fetch {url}: {e}")
+        return ""
+
+
+def fetch_api(url: str, data: dict, client_id: str) -> dict:
+    """Make a POST request to the API."""
+    league = LEAGUES.get(client_id, LEAGUES['metrowbb'])
+
+    encoded_data = urllib.parse.urlencode(data).encode('utf-8')
+
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Origin': league['origin'],
+        'Referer': f"{league['origin']}/",
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+
+    req = urllib.request.Request(url, data=encoded_data, headers=headers)
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            content = response.read().decode('utf-8')
+            return json.loads(content)
+    except Exception as e:
+        logger.error(f"API request failed: {e}")
+        return {}
+
+
+def parse_towns_from_html(html: str) -> dict:
+    """Parse town options from the HTML page."""
+    towns = {}
+
+    # Look for the inputTown or popupTown select element
+    # Pattern: <option value='3553'>Milton</option>
+    pattern = r"<option\s+value=['\"](\d+)['\"]>([^<]+)</option>"
+
+    # Find the town select section
+    town_section = re.search(r'id=["\'](?:input|popup)Town["\'][^>]*>.*?</select>', html, re.DOTALL | re.IGNORECASE)
+    if town_section:
+        matches = re.findall(pattern, town_section.group())
+        for town_id, town_name in matches:
+            towns[town_name.strip()] = town_id
+
+    # Fallback: search entire page if section not found
+    if not towns:
+        matches = re.findall(pattern, html)
+        for town_id, town_name in matches:
+            # Filter out non-town options
+            if town_name.strip() and not town_name.startswith('Choose'):
+                towns[town_name.strip()] = town_id
+
+    return towns
+
+
+def get_town_id(client_id: str, town_name: str) -> Optional[str]:
+    """Look up town ID by fetching and parsing the league page."""
+    league = LEAGUES.get(client_id)
+    if not league:
+        logger.error(f"Unknown league: {client_id}")
+        return None
+
+    logger.info(f"Fetching {league['name']} page to find town ID for {town_name}...")
+    html = fetch_url(league['url'])
+
+    if not html:
+        logger.error(f"Could not fetch {league['url']}")
+        return None
+
+    towns = parse_towns_from_html(html)
+    logger.info(f"Found {len(towns)} towns in {league['name']}")
+
+    # Case-insensitive lookup
+    for name, tid in towns.items():
+        if name.lower() == town_name.lower():
+            logger.info(f"Found {town_name} = {tid}")
+            return tid
+
+    # Partial match
+    for name, tid in towns.items():
+        if town_name.lower() in name.lower():
+            logger.info(f"Found partial match: {name} = {tid}")
+            return tid
+
+    logger.error(f"Town '{town_name}' not found in {league['name']}")
+    logger.debug(f"Available towns: {list(towns.keys())}")
+    return None
+
+
+def discover_teams(client_id: str, town_no: str, grade: int, gender: str, season: str = None) -> list[dict]:
+    """Discover teams for a town/grade/gender combination."""
+    if not season:
+        season = get_season()
+
+    data = {
+        'clientid': client_id,
+        'yrseason': season,
+        'townno': town_no,
+        'grade': str(grade),
+        'gender': gender
+    }
+
+    logger.info(f"Discovering teams: {client_id} grade={grade} gender={gender} town={town_no}")
+
+    result = fetch_api(TEAM_DISCOVERY_URL, data, client_id)
+
+    if isinstance(result, list):
+        teams = []
+        for team in result:
+            if team.get('teamno'):
+                teams.append({
+                    'team_no': team['teamno'],
+                    'team_name': team.get('teamname', '').strip(),
+                    'division_no': team.get('divisionno', ''),
+                    'division_tier': team.get('divisiontier', '')
+                })
+        logger.info(f"Found {len(teams)} teams")
+        return teams
+
+    return []
+
+
+def parse_team_color(team_name: str) -> str:
+    """Extract color from team name like '(White) D2'."""
+    match = re.search(r'\((\w+)\)', team_name)
+    if match:
+        return match.group(1)
+    return ""
 
 
 def fetch_schedule(client_id: str, team_no: str, season: str = None) -> dict:
     """Fetch schedule from sportsite2.com API."""
     if not season:
-        now = datetime.now()
-        if now.month >= 8:
-            season = str(now.year + 1)
-        else:
-            season = str(now.year)
+        season = get_season()
 
-    data = urllib.parse.urlencode({
+    data = {
         'clientid': client_id,
         'yrseason': season,
         'teamno': team_no
-    }).encode('utf-8')
-
-    # Set origin based on client_id
-    if client_id == 'ssybl':
-        origin = 'https://ssybl.org'
-    else:
-        origin = 'https://metrowestbball.com'
-
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'Origin': origin,
-        'Referer': f'{origin}/',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
 
     logger.info(f"Fetching schedule: clientid={client_id}, teamno={team_no}, season={season}")
-
-    req = urllib.request.Request(API_URL, data=data, headers=headers)
-
-    try:
-        with urllib.request.urlopen(req, timeout=30) as response:
-            content = response.read().decode('utf-8')
-            logger.debug(f"Response: {content[:500]}")
-            return json.loads(content)
-    except Exception as e:
-        logger.error(f"API request failed: {e}")
-        return {}
+    return fetch_api(TEAM_SCHEDULE_URL, data, client_id)
 
 
 def parse_api_date(date_str: str, time_str: str) -> Optional[datetime]:
@@ -138,6 +282,7 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
     short_name = team_config.get('short_name', team_name)
     league = team_config.get('league', 'Basketball')
     grade = team_config.get('grade', '')
+    color = team_config.get('color', '')
 
     # Handle different response formats
     if isinstance(data, list):
@@ -217,7 +362,8 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
                 'short_name': short_name,
                 'game_type': str(game_type) if game_type else '',
                 'league': league,
-                'grade': grade
+                'grade': str(grade),
+                'color': color
             }
             games.append(game)
             logger.info(f"Found game: {game_dt.strftime('%b %d %I:%M%p')} vs {opponent}")
@@ -335,7 +481,7 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
     return cal.to_ical()
 
 
-def generate_index_html(calendars: list[dict], base_url: str) -> str:
+def generate_index_html(calendars: list[dict], base_url: str, town_name: str) -> str:
     """Generate the landing page HTML."""
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
 
@@ -376,7 +522,7 @@ def generate_index_html(calendars: list[dict], base_url: str) -> str:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Milton Basketball Calendars</title>
+    <title>{town_name} Basketball Calendars</title>
     <style>
         * {{ box-sizing: border-box; }}
         body {{
@@ -459,7 +605,7 @@ def generate_index_html(calendars: list[dict], base_url: str) -> str:
     </style>
 </head>
 <body>
-    <h1>🏀 Milton Basketball</h1>
+    <h1>🏀 {town_name} Basketball</h1>
     <p class="subtitle">Subscribe to automatically sync game schedules to your calendar</p>
 
     <div id="copied" class="copied">URL Copied!</div>
@@ -480,7 +626,7 @@ def generate_index_html(calendars: list[dict], base_url: str) -> str:
             <li><strong>iPhone/iPad:</strong> Tap "Subscribe" button, or Settings → Calendar → Accounts → Add Subscribed Calendar</li>
             <li><strong>Outlook:</strong> Add calendar → Subscribe from web</li>
         </ul>
-        <p><strong>Tip:</strong> Calendars auto-update every 24 hours. Data refreshes every 6 hours.</p>
+        <p><strong>Tip:</strong> Calendars auto-update every 24 hours. Data refreshes every 3 hours.</p>
     </div>
 
     <p class="footer">
@@ -502,9 +648,102 @@ def generate_index_html(calendars: list[dict], base_url: str) -> str:
 '''
 
 
+def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
+    """
+    Discover teams dynamically and fetch their schedules.
+
+    Returns: (team_configs, all_games)
+    """
+    town_name = config.get('town_name', 'Milton')
+    leagues = config.get('leagues', ['ssybl', 'metrowbb'])
+    grades = config.get('grades', [5, 8])
+    genders = config.get('genders', ['M'])
+    colors = config.get('colors', ['White'])  # Filter to specific colors, or empty for all
+    season = get_season()
+
+    # Cache town IDs per league
+    town_ids = {}
+    for league in leagues:
+        town_id = get_town_id(league, town_name)
+        if town_id:
+            town_ids[league] = town_id
+        else:
+            logger.warning(f"Could not find {town_name} in {league}")
+
+    if not town_ids:
+        logger.error(f"Could not find {town_name} in any league!")
+        return [], []
+
+    # Discover all teams
+    discovered_teams = []  # List of (league, grade, gender, team_info)
+
+    for league, town_id in town_ids.items():
+        for grade in grades:
+            for gender in genders:
+                teams = discover_teams(league, town_id, grade, gender, season)
+                for team in teams:
+                    color = parse_team_color(team['team_name'])
+                    # Filter by color if specified
+                    if colors and color and color not in colors:
+                        logger.info(f"Skipping {team['team_name']} (color {color} not in {colors})")
+                        continue
+                    discovered_teams.append({
+                        'league': league,
+                        'grade': grade,
+                        'gender': gender,
+                        'color': color,
+                        'team_no': team['team_no'],
+                        'team_name_raw': team['team_name'],
+                        'division_tier': team.get('division_tier', '')
+                    })
+
+    logger.info(f"Discovered {len(discovered_teams)} teams")
+
+    # Build team configs and fetch schedules
+    team_configs = []
+    all_games = []
+
+    gender_names = {'M': 'Boys', 'F': 'Girls'}
+    league_names = {k: v['name'] for k, v in LEAGUES.items()}
+
+    for team in discovered_teams:
+        league = team['league']
+        grade = team['grade']
+        gender = team['gender']
+        color = team['color']
+        team_no = team['team_no']
+
+        # Build identifiers
+        gender_name = gender_names.get(gender, gender)
+        league_name = league_names.get(league, league)
+
+        team_id = f"{town_name.lower()}-{grade}th-{gender_name.lower()}-{color.lower()}-{league}".replace(' ', '-')
+        team_name = f"{town_name} {grade}th {gender_name} {color} ({league_name})"
+        short_name = f"{grade}{gender[0]}-{color}"
+
+        team_config = {
+            'id': team_id,
+            'team_name': team_name,
+            'short_name': short_name,
+            'client_id': league,
+            'team_no': team_no,
+            'league': league_name,
+            'grade': str(grade),
+            'gender': gender,
+            'color': color
+        }
+        team_configs.append(team_config)
+
+        # Fetch games
+        games = fetch_team_games(team_config)
+        all_games.extend(games)
+
+    return team_configs, all_games
+
+
 def main():
     parser = argparse.ArgumentParser(description='Basketball Schedule Scraper')
-    parser.add_argument('--config', '-c', required=True, help='Teams config file (JSON)')
+    parser.add_argument('--config', '-c', required=True, help='Config file (JSON)')
     parser.add_argument('--output', '-o', default='docs', help='Output directory for ICS files')
     parser.add_argument('--base-url', '-u', default='', help='Base URL for calendar links')
     args = parser.parse_args()
@@ -512,40 +751,80 @@ def main():
     with open(args.config) as f:
         config = json.load(f)
 
-    teams = config.get('teams', [])
-    combined_calendars = config.get('combined_calendars', [])
     base_url = args.base_url or config.get('base_url', 'https://example.github.io/ssbball')
+    town_name = config.get('town_name', 'Milton')
 
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Fetch all team schedules
-    all_games = []
-    team_games = {}  # team_id -> games
+    # Check if using new dynamic config or legacy static config
+    if 'teams' in config:
+        # Legacy mode: static team definitions
+        logger.info("Using legacy static team configuration")
+        teams = config.get('teams', [])
+        combined_calendars = config.get('combined_calendars', [])
+
+        all_games = []
+        team_configs = []
+
+        for team_config in teams:
+            team_id = team_config.get('id', 'team')
+            team_name = team_config.get('team_name', 'Team')
+
+            logger.info(f"Fetching {team_name}...")
+            games = fetch_team_games(team_config)
+            all_games.extend(games)
+            team_configs.append(team_config)
+    else:
+        # Dynamic mode: discover teams
+        logger.info("Using dynamic team discovery")
+        team_configs, all_games = discover_and_fetch_teams(config)
+
+        # Build combined calendars based on discovered teams
+        combined_calendars = []
+
+        # Group by grade+gender+color (across leagues)
+        team_groups = defaultdict(list)
+        for tc in team_configs:
+            key = (tc['grade'], tc['gender'], tc['color'])
+            team_groups[key].append(tc)
+
+        # Create combined calendar for each group with multiple leagues
+        for (grade, gender, color), group_teams in team_groups.items():
+            if len(group_teams) > 1:
+                gender_name = 'Boys' if gender == 'M' else 'Girls'
+                combined_calendars.append({
+                    'id': f"{town_name.lower()}-{grade}th-{gender_name.lower()}-{color.lower()}",
+                    'name': f"{town_name} {grade}th {gender_name} {color}",
+                    'description': 'All leagues combined',
+                    'filter': {'grade': str(grade), 'gender': gender, 'color': color}
+                })
+
     calendar_info = []  # For index.html
 
-    for team_config in teams:
+    # Generate individual team calendars
+    for team_config in team_configs:
         team_id = team_config.get('id', 'team')
         team_name = team_config.get('team_name', 'Team')
 
-        logger.info(f"Fetching {team_name}...")
-        games = fetch_team_games(team_config)
+        # Filter games for this team
+        team_games = [g for g in all_games
+                     if g.get('team_name') == team_name or
+                        (g.get('grade') == team_config.get('grade') and
+                         g.get('league') == team_config.get('league') and
+                         g.get('color') == team_config.get('color'))]
 
-        team_games[team_id] = games
-        all_games.extend(games)
-
-        # Generate individual team calendar
-        ical_data = generate_ical(games, team_name, team_id)
+        ical_data = generate_ical(team_games, team_name, team_id)
         ics_path = output_dir / f"{team_id}.ics"
         ics_path.write_bytes(ical_data)
-        logger.info(f"Wrote {ics_path} with {len(games)} games")
+        logger.info(f"Wrote {ics_path} with {len(team_games)} games")
 
         calendar_info.append({
             'type': 'team',
             'id': team_id,
             'name': team_config.get('short_name', team_name),
-            'description': f"{team_config.get('league', '')}",
-            'games': len(games)
+            'description': team_config.get('league', ''),
+            'games': len(team_games)
         })
 
     # Generate combined calendars
@@ -580,7 +859,7 @@ def main():
         })
 
     # Generate index.html
-    index_html = generate_index_html(calendar_info, base_url)
+    index_html = generate_index_html(calendar_info, base_url, town_name)
     index_path = output_dir / 'index.html'
     index_path.write_text(index_html)
     logger.info(f"Wrote {index_path}")
@@ -588,6 +867,8 @@ def main():
     # Write status
     summary = {
         'updated': datetime.now(EASTERN).isoformat(),
+        'town': town_name,
+        'teams_discovered': len(team_configs),
         'calendars': calendar_info
     }
     (output_dir / 'status.json').write_text(json.dumps(summary, indent=2))
@@ -596,6 +877,8 @@ def main():
     print("\n" + "="*50)
     print("Scrape Complete")
     print("="*50)
+    print(f"Town: {town_name}")
+    print(f"Teams discovered: {len(team_configs)}")
     for cal in calendar_info:
         print(f"  {cal['name']}: {cal['games']} games")
     print(f"\nOutput: {output_dir}/")
