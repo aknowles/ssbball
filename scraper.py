@@ -908,12 +908,22 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
             <li><strong>iPhone/iPad:</strong> Tap "Subscribe" button, or Settings → Calendar → Accounts → Add Subscribed Calendar</li>
             <li><strong>Outlook:</strong> Add calendar → Subscribe from web</li>
         </ul>
-        <p><strong>Tip:</strong> Calendars auto-update every 24 hours. Data refreshes every 3 hours.</p>
+        <p><strong>Tip:</strong> Subscribed calendars auto-update periodically (usually every few hours). Data is refreshed hourly during game hours.</p>
+    </div>
+
+    <div class="instructions" style="margin-top: 16px; background: #fff8e6;">
+        <h2>⚠️ Important Notes</h2>
+        <ul>
+            <li>These calendars include <strong>league games only</strong> — tournaments, scrimmages, and non-league games are not included.</li>
+            <li>Schedule data is sourced from <a href="https://metrowestbball.com">MetroWest Basketball</a> and <a href="https://ssybl.org">SSYBL</a>. Always verify with official league sources.</li>
+            <li>Game times and locations may change — check for updates before traveling.</li>
+        </ul>
     </div>
 
     <p class="footer">
         Last updated: {now}<br>
-        Data from MetroWest Basketball &amp; SSYBL
+        Data from MetroWest Basketball &amp; SSYBL<br>
+        <span style="font-size: 11px;">Not affiliated with MetroWest Basketball or SSYBL. For informational purposes only.</span>
     </p>
 
     <script>
