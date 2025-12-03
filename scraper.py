@@ -371,7 +371,19 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
             citystzip = str(item.get('citystzip', '') or '').strip()
             directions = str(item.get('directions', '') or '').strip()
 
-            # Combine venue and address
+            # Extract court/gym info from venue name for better iOS geocoding
+            # e.g., "Milton High School - Court 2" -> venue="Milton High School", court_info="Court 2"
+            court_info = ''
+            if ' - ' in venue:
+                venue_parts = venue.split(' - ', 1)
+                # Check if second part looks like court/gym info (not an address)
+                if venue_parts[1] and not any(c.isdigit() and len(venue_parts[1]) > 20 for c in venue_parts[1]):
+                    second = venue_parts[1].lower()
+                    if any(word in second for word in ['court', 'gym', 'field', 'rink', 'front', 'back', 'main']):
+                        venue = venue_parts[0].strip()
+                        court_info = venue_parts[1].strip()
+
+            # Combine venue and address in iOS-friendly format
             location_parts = []
             if venue:
                 location_parts.append(venue)
@@ -381,7 +393,11 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
                 location_parts.append(street)
             elif citystzip:
                 location_parts.append(citystzip)
-            location = ' - '.join(location_parts)
+
+            # Use comma separator for better geocoding, add court info at end
+            location = ', '.join(location_parts)
+            if court_info:
+                location = f"{location} ({court_info})"
 
             if not date_str:
                 continue
