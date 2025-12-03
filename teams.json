@@ -5,19 +5,20 @@
       "id": "milton-5th-boys-white",
       "team_name": "Milton 5th Grade Boys White",
       "sites": ["metrowest"],
+      "site_url": "https://metrowestbball.com",
       "town": "Milton",
-      "grade": "5th Grade",
+      "grade": "5th",
       "gender": "Boys",
-      "team": "White"
+      "team": "(White) D3J"
     },
     {
       "id": "milton-8th-boys-white",
       "team_name": "Milton 8th Grade Boys White",
       "sites": ["ssybl"],
       "town": "Milton",
-      "grade": "8th Grade",
+      "grade": "8th",
       "gender": "Boys",
-      "team": "White"
+      "team": "(White)"
     }
   ]
 }
