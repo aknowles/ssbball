@@ -189,7 +189,7 @@ def get_town_id(client_id: str, town_name: str) -> Optional[str]:
             'Foxborough': '2676', 'Framingham': '2677', 'Franklin': '2678',
             'Holliston': '2681', 'Hopkinton': '2682', 'Lincoln-Sudbury': '2687',
             'Medfield': '2689', 'Medway': '2690', 'Milford': '2691',
-            'Millis': '2692', 'Milton': '3494', 'Natick': '2694',
+            'Millis': '2692', 'Milton': '3488', 'Natick': '2694',
             'Needham': '2695', 'Newton': '2696', 'Norfolk': '2697',
             'Norwood': '2698', 'Sharon': '2702', 'Sudbury': '2706',
             'Walpole': '2708', 'Wayland': '2710', 'Wellesley': '2711',
