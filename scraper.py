@@ -131,7 +131,7 @@ def parse_api_date(date_str: str, time_str: str) -> Optional[datetime]:
         return None
 
 
-def parse_schedule_response(data: dict, team_config: dict) -> list[dict]:
+def parse_schedule_response(data, team_config: dict) -> list[dict]:
     """Parse the API response into game objects."""
     games = []
     team_name = team_config.get('team_name', 'Team')
@@ -139,17 +139,23 @@ def parse_schedule_response(data: dict, team_config: dict) -> list[dict]:
     league = team_config.get('league', 'Basketball')
     grade = team_config.get('grade', '')
 
-    schedule_data = data.get('schedule', data.get('games', data.get('data', [])))
-
-    if isinstance(schedule_data, dict):
-        schedule_data = schedule_data.get('games', [])
+    # Handle different response formats
+    if isinstance(data, list):
+        schedule_data = data
+    elif isinstance(data, dict):
+        schedule_data = data.get('schedule', data.get('games', data.get('data', [])))
+        if isinstance(schedule_data, dict):
+            schedule_data = schedule_data.get('games', [])
+    else:
+        schedule_data = []
 
     if not isinstance(schedule_data, list):
         logger.warning(f"Unexpected schedule format: {type(schedule_data)}")
-        for key, value in data.items():
-            if isinstance(value, list) and len(value) > 0:
-                schedule_data = value
-                break
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, list) and len(value) > 0:
+                    schedule_data = value
+                    break
 
     logger.info(f"Found {len(schedule_data) if isinstance(schedule_data, list) else 0} items in schedule")
 
