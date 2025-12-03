@@ -1,9 +1,13 @@
 name: Update Basketball Calendars
 
 on:
-  # Run every hour
+  # Run every hour during game hours (6 AM - 9 PM ET)
+  # Note: GitHub Actions uses UTC, so 6 AM - 9 PM ET = 11:00 - 02:00 UTC (EST) or 10:00 - 01:00 UTC (EDT)
+  # Using ET approximation: 6 AM ET ≈ 11 UTC, 9 PM ET ≈ 02 UTC
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 11-23 * * *'  # Hourly 11 AM - 11 PM UTC (6 AM - 6 PM ET)
+    - cron: '0 0-2 * * *'    # Hourly midnight - 2 AM UTC (7 - 9 PM ET)
+    - cron: '0 7 * * *'      # 7 AM UTC = 2 AM ET (single overnight run, ~5 hours gap)
 
   # Allow manual trigger
   workflow_dispatch:
