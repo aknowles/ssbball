@@ -8,7 +8,7 @@ on:
   # Allow manual trigger
   workflow_dispatch:
 
-  # Run on push to main (for testing)
+  # Run on push to main
   push:
     branches:
       - main
@@ -41,27 +41,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-
-      - name: Install ChromeDriver
-        uses: nanasess/setup-chromedriver@v2
-
       - name: Install Python dependencies
         run: |
-          pip install selenium icalendar
+          pip install icalendar
 
       - name: Run scraper
-        env:
-          CHROME_BIN: /usr/bin/google-chrome
         run: |
-          # Start display for Chrome
-          export DISPLAY=:99
-          sudo Xvfb :99 -screen 0 1920x1080x24 &
-
-          # Run the scraper
           python scraper.py \
             --config teams.json \
             --output docs \

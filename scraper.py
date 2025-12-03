@@ -2,8 +2,10 @@
 """
 Basketball Schedule Scraper for GitHub Actions
 
-Scrapes schedules from metrowestbball.com and ssybl.org,
+Fetches schedules from sportsite2.com API (used by metrowestbball.com and ssybl.org),
 generates iCal files, and outputs them for GitHub Pages hosting.
+
+No Selenium required - uses direct API calls!
 
 Usage:
     python scraper.py --config teams.json --output docs/
@@ -13,21 +15,14 @@ import argparse
 import hashlib
 import json
 import logging
-import os
 import re
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
+import urllib.request
+import urllib.parse
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from icalendar import Calendar, Event, Alarm
 
 # Configure logging
@@ -40,423 +35,200 @@ logger = logging.getLogger(__name__)
 # Eastern timezone for MA basketball leagues
 EASTERN = ZoneInfo("America/New_York")
 
-
-def create_driver():
-    """Create a headless Chrome driver for CI."""
-    options = Options()
-    options.add_argument('--headless=new')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=1920,1080')
-    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-
-    # For GitHub Actions, Chrome is pre-installed
-    chrome_bin = os.environ.get('CHROME_BIN')
-    if chrome_bin:
-        options.binary_location = chrome_bin
-
-    service = Service()
-    return webdriver.Chrome(service=service, options=options)
+# API endpoint
+API_URL = "https://sportsite2.com/getTeamSchedule.php"
 
 
-def parse_date_and_time(date_str: str, time_str: str, year: int = None) -> Optional[datetime]:
-    """Parse date and time strings into a datetime object."""
-    if not year:
-        year = datetime.now().year
-
-    # Parse date like "Dec 7" or "Jan 18"
-    date_match = re.match(r'([A-Za-z]+)\s*(\d{1,2})', date_str.strip())
-    if not date_match:
-        # Try numeric format like "12/7" or "1/18"
-        date_match = re.match(r'(\d{1,2})[/-](\d{1,2})', date_str.strip())
-        if date_match:
-            month = int(date_match.group(1))
-            day = int(date_match.group(2))
+def fetch_schedule(client_id: str, team_no: str, season: str = None) -> dict:
+    """Fetch schedule from sportsite2.com API."""
+    if not season:
+        # Season is typically the ending year (2025-2026 season = 2026)
+        now = datetime.now()
+        if now.month >= 8:  # Aug onwards is next year's season
+            season = str(now.year + 1)
         else:
-            return None
-    else:
-        month_str = date_match.group(1).lower()
-        day = int(date_match.group(2))
-        months = {
-            'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-            'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
-        }
-        month = months.get(month_str[:3], 1)
+            season = str(now.year)
 
-    # Handle year rollover (if month is Jan-Mar and current month is Oct-Dec, use next year)
-    now = datetime.now()
-    if month < 6 and now.month > 8:
-        year = now.year + 1
-    elif month > 8 and now.month < 6:
-        year = now.year - 1
-    else:
-        year = now.year
+    data = urllib.parse.urlencode({
+        'clientid': client_id,
+        'yrseason': season,
+        'teamno': team_no
+    }).encode('utf-8')
 
-    # Parse time like "2:00 PM" or "11:15 AM"
-    time_match = re.search(r'(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?', time_str)
-    if time_match:
-        hour = int(time_match.group(1))
-        minute = int(time_match.group(2))
-        ampm = time_match.group(3)
-        if ampm:
-            if ampm.upper() == 'PM' and hour != 12:
-                hour += 12
-            elif ampm.upper() == 'AM' and hour == 12:
-                hour = 0
-    else:
-        hour, minute = 12, 0  # Default to noon
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Origin': f'https://{client_id.replace("wbb", "westbball")}.com',
+        'Referer': f'https://{client_id.replace("wbb", "westbball")}.com/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+
+    logger.info(f"Fetching schedule: clientid={client_id}, teamno={team_no}, season={season}")
+
+    req = urllib.request.Request(API_URL, data=data, headers=headers)
 
     try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            content = response.read().decode('utf-8')
+            logger.debug(f"Response: {content[:500]}")
+            return json.loads(content)
+    except Exception as e:
+        logger.error(f"API request failed: {e}")
+        return {}
+
+
+def parse_api_date(date_str: str, time_str: str) -> Optional[datetime]:
+    """Parse date and time from API response."""
+    try:
+        # Handle various date formats
+        # Format: "12/7/2025" or "2025-12-07"
+        if '/' in date_str:
+            parts = date_str.split('/')
+            if len(parts) == 3:
+                month, day, year = int(parts[0]), int(parts[1]), int(parts[2])
+            else:
+                return None
+        elif '-' in date_str:
+            parts = date_str.split('-')
+            if len(parts) == 3:
+                year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
+            else:
+                return None
+        else:
+            # Try "Dec 7" format
+            match = re.match(r'([A-Za-z]+)\s*(\d{1,2})', date_str)
+            if match:
+                months = {
+                    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+                    'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+                }
+                month = months.get(match.group(1).lower()[:3], 1)
+                day = int(match.group(2))
+                now = datetime.now()
+                year = now.year + 1 if month < 6 and now.month > 8 else now.year
+            else:
+                return None
+
+        # Parse time
+        hour, minute = 12, 0  # Default
+        if time_str:
+            time_match = re.search(r'(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?', time_str)
+            if time_match:
+                hour = int(time_match.group(1))
+                minute = int(time_match.group(2))
+                ampm = time_match.group(3)
+                if ampm:
+                    if ampm.upper() == 'PM' and hour != 12:
+                        hour += 12
+                    elif ampm.upper() == 'AM' and hour == 12:
+                        hour = 0
+
         return datetime(year, month, day, hour, minute, tzinfo=EASTERN)
-    except ValueError as e:
-        logger.warning(f"Invalid date: {year}-{month}-{day} {hour}:{minute} - {e}")
+    except Exception as e:
+        logger.warning(f"Could not parse date/time: {date_str} {time_str} - {e}")
         return None
 
 
-def scrape_metrowest(driver, config: dict) -> list[dict]:
-    """Scrape schedule from metrowestbball.com."""
+def parse_schedule_response(data: dict, team_name: str, league: str) -> list[dict]:
+    """Parse the API response into game objects."""
     games = []
-    url = config.get('site_url', 'https://metrowestbball.com')
 
-    try:
-        logger.info(f"Scraping MetroWest from {url}...")
-        driver.get(url)
-        time.sleep(3)
+    # The API returns various formats - try to handle them
+    schedule_data = data.get('schedule', data.get('games', data.get('data', [])))
 
-        # Wait for page to load
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
+    if isinstance(schedule_data, dict):
+        schedule_data = schedule_data.get('games', [])
 
-        # Take screenshot for debugging
-        logger.info(f"Page title: {driver.title}")
+    if not isinstance(schedule_data, list):
+        logger.warning(f"Unexpected schedule format: {type(schedule_data)}")
+        # Try to find any list in the response
+        for key, value in data.items():
+            if isinstance(value, list) and len(value) > 0:
+                schedule_data = value
+                break
 
-        # Find all select elements
-        selects = driver.find_elements(By.TAG_NAME, 'select')
-        logger.info(f"Found {len(selects)} dropdowns")
+    logger.info(f"Found {len(schedule_data) if isinstance(schedule_data, list) else 0} items in schedule")
 
-        # Log all dropdown options for debugging
-        dropdown_map = {}
-        for sel in selects:
-            try:
-                # Try to identify dropdown by nearby label or name attribute
-                sel_id = sel.get_attribute('id') or sel.get_attribute('name') or 'unknown'
-                select_obj = Select(sel)
-                options = [opt.text.strip() for opt in select_obj.options if opt.text.strip()]
-                logger.info(f"Dropdown '{sel_id}': {options[:8]}")
+    if not isinstance(schedule_data, list):
+        return games
 
-                # Map dropdowns by content
-                option_text = ' '.join(options).lower()
-                if 'boys' in option_text or 'girls' in option_text:
-                    dropdown_map['gender'] = sel
-                elif any(g in option_text for g in ['5th', '6th', '7th', '8th', '4th']):
-                    dropdown_map['grade'] = sel
-                elif any(t in option_text for t in ['milton', 'newton', 'brookline', 'needham']):
-                    if 'white' in option_text or 'red' in option_text or 'd1' in option_text.lower():
-                        dropdown_map['team'] = sel
-                    else:
-                        dropdown_map['town'] = sel
-            except Exception as e:
-                logger.debug(f"Error reading dropdown: {e}")
-
-        # Select Gender
-        gender = config.get('gender', 'Boys')
-        if 'gender' in dropdown_map:
-            try:
-                select_obj = Select(dropdown_map['gender'])
-                for opt in select_obj.options:
-                    if gender.lower() in opt.text.lower():
-                        logger.info(f"Selecting gender: {opt.text}")
-                        select_obj.select_by_visible_text(opt.text)
-                        time.sleep(1)
-                        break
-            except Exception as e:
-                logger.warning(f"Could not select gender: {e}")
-
-        # Re-find dropdowns after selection (page may have updated)
-        time.sleep(1)
-        selects = driver.find_elements(By.TAG_NAME, 'select')
-
-        # Select Grade
-        grade = config.get('grade', '5th')
-        for sel in selects:
-            try:
-                select_obj = Select(sel)
-                for opt in select_obj.options:
-                    if grade.lower() in opt.text.lower():
-                        logger.info(f"Selecting grade: {opt.text}")
-                        select_obj.select_by_visible_text(opt.text)
-                        time.sleep(1)
-                        break
-            except Exception:
-                continue
-
-        # Re-find and select Town
-        time.sleep(1)
-        selects = driver.find_elements(By.TAG_NAME, 'select')
-        town = config.get('town', 'Milton')
-        for sel in selects:
-            try:
-                select_obj = Select(sel)
-                for opt in select_obj.options:
-                    if town.lower() in opt.text.lower() and 'white' not in opt.text.lower() and 'red' not in opt.text.lower():
-                        logger.info(f"Selecting town: {opt.text}")
-                        select_obj.select_by_visible_text(opt.text)
-                        time.sleep(1)
-                        break
-            except Exception:
-                continue
-
-        # Re-find and select Team
-        time.sleep(1)
-        selects = driver.find_elements(By.TAG_NAME, 'select')
-        team = config.get('team', '(White)')
-        for sel in selects:
-            try:
-                select_obj = Select(sel)
-                options_text = [opt.text for opt in select_obj.options]
-                logger.info(f"Team dropdown options: {options_text}")
-
-                # Try exact match first
-                for opt in select_obj.options:
-                    if team.lower() == opt.text.lower().strip():
-                        logger.info(f"Selecting team (exact): {opt.text}")
-                        select_obj.select_by_visible_text(opt.text)
-                        time.sleep(1)
-                        break
-                else:
-                    # Try partial match
-                    for opt in select_obj.options:
-                        if team.lower() in opt.text.lower():
-                            logger.info(f"Selecting team (partial): {opt.text}")
-                            select_obj.select_by_visible_text(opt.text)
-                            time.sleep(1)
-                            break
-            except Exception as e:
-                logger.debug(f"Team selection error: {e}")
-                continue
-
-        # Click Search button
-        time.sleep(1)
+    for item in schedule_data:
         try:
-            search_btn = driver.find_element(By.XPATH, "//button[contains(text(), 'SEARCH')] | //button[contains(text(), 'Search')] | //input[@value='Search'] | //input[@value='SEARCH'] | //a[contains(text(), 'SEARCH')]")
-            logger.info("Clicking Search button")
-            search_btn.click()
-            time.sleep(3)
-        except NoSuchElementException:
-            logger.info("No Search button found, schedule may already be visible")
+            if not isinstance(item, dict):
+                continue
 
-        # Wait for schedule table to load
-        time.sleep(2)
+            # Extract fields (field names may vary)
+            date_str = item.get('date', item.get('gamedate', item.get('gdate', '')))
+            time_str = item.get('time', item.get('gametime', item.get('gtime', '')))
+            opponent = item.get('opponent', item.get('opp', item.get('oppname', '')))
+            location = item.get('location', item.get('loc', item.get('facility', '')))
+            game_type = item.get('homeaway', item.get('ha', item.get('type', '')))
 
-        # Parse the schedule table
-        # Looking for table with columns: DATE, DAY, GAME, OPPONENT, LOCATION, TIME
-        tables = driver.find_elements(By.TAG_NAME, 'table')
-        logger.info(f"Found {len(tables)} tables")
+            if not date_str:
+                continue
 
-        team_name = config.get('team_name', 'Team')
+            game_dt = parse_api_date(date_str, time_str)
+            if not game_dt:
+                continue
 
-        for table in tables:
-            rows = table.find_elements(By.TAG_NAME, 'tr')
-            logger.info(f"Table has {len(rows)} rows")
+            # Clean opponent name
+            if opponent:
+                opponent = re.sub(r'^[@vs.\s]+', '', str(opponent), flags=re.I).strip()
 
-            for row in rows:
-                cells = row.find_elements(By.TAG_NAME, 'td')
-                if len(cells) >= 5:
-                    try:
-                        # Expected columns: DATE, DAY, GAME, OPPONENT, LOCATION, TIME, SCORE, OPP
-                        cell_texts = [c.text.strip() for c in cells]
-                        logger.debug(f"Row: {cell_texts}")
+            if not opponent:
+                opponent = "TBD"
 
-                        date_str = cell_texts[0] if len(cell_texts) > 0 else ""
-                        day_str = cell_texts[1] if len(cell_texts) > 1 else ""
-                        game_type = cell_texts[2] if len(cell_texts) > 2 else ""  # Home/Away
-                        opponent = cell_texts[3] if len(cell_texts) > 3 else ""
-                        location = cell_texts[4] if len(cell_texts) > 4 else ""
-                        time_str = cell_texts[5] if len(cell_texts) > 5 else ""
+            game = {
+                'datetime': game_dt,
+                'opponent': opponent,
+                'location': str(location) if location else '',
+                'home_team': team_name,
+                'game_type': str(game_type) if game_type else '',
+                'league': league
+            }
+            games.append(game)
+            logger.info(f"Found game: {game_dt.strftime('%b %d %I:%M%p')} vs {opponent}")
 
-                        # Skip header rows or empty rows
-                        if not date_str or date_str.upper() == 'DATE' or not opponent:
-                            continue
-
-                        # Parse the datetime
-                        game_dt = parse_date_and_time(date_str, time_str)
-                        if not game_dt:
-                            logger.warning(f"Could not parse date/time: {date_str} {time_str}")
-                            continue
-
-                        # Clean up opponent name (remove @ prefix for away games)
-                        opponent = re.sub(r'^@\s*', '', opponent).strip()
-
-                        game = {
-                            'datetime': game_dt,
-                            'opponent': opponent,
-                            'location': location,
-                            'home_team': team_name,
-                            'game_type': game_type,
-                            'league': 'MetroWest'
-                        }
-                        games.append(game)
-                        logger.info(f"Found game: {game_dt.strftime('%b %d')} vs {opponent}")
-
-                    except Exception as e:
-                        logger.debug(f"Error parsing row: {e}")
-                        continue
-
-        logger.info(f"Found {len(games)} games from MetroWest")
-
-    except Exception as e:
-        logger.error(f"Error scraping MetroWest: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        except Exception as e:
+            logger.debug(f"Error parsing game: {e}")
+            continue
 
     return games
 
 
-def scrape_ssybl(driver, config: dict) -> list[dict]:
-    """Scrape schedule from ssybl.org."""
-    games = []
-    url = config.get('site_url', 'https://ssybl.org')
+def scrape_team(config: dict) -> tuple[list[dict], bytes]:
+    """Fetch schedule for a single team."""
+    all_games = []
 
-    try:
-        logger.info(f"Scraping SSYBL from {url}...")
-        driver.get(url)
-        time.sleep(3)
+    team_name = config.get('team_name', 'Basketball Team')
 
-        # Wait for page to load
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
+    # Get API parameters
+    client_id = config.get('client_id', 'metrowbb')
+    team_no = config.get('team_no', '')
+    season = config.get('season', None)
+    league = config.get('league', 'MetroWest')
 
-        logger.info(f"Page title: {driver.title}")
+    if not team_no:
+        logger.error(f"No team_no configured for {team_name}")
+        return [], generate_ical([], team_name, config.get('id', 'team'))
 
-        # Similar approach to MetroWest - find and interact with dropdowns
-        selects = driver.find_elements(By.TAG_NAME, 'select')
-        logger.info(f"Found {len(selects)} dropdowns")
+    # Fetch from API
+    data = fetch_schedule(client_id, team_no, season)
 
-        # Log dropdown options
-        for i, sel in enumerate(selects):
-            try:
-                select_obj = Select(sel)
-                options = [opt.text.strip() for opt in select_obj.options if opt.text.strip()]
-                logger.info(f"Dropdown {i}: {options[:8]}")
-            except Exception:
-                pass
+    if data:
+        games = parse_schedule_response(data, team_name, league)
+        all_games.extend(games)
+        logger.info(f"Found {len(games)} games for {team_name}")
+    else:
+        logger.warning(f"No data returned for {team_name}")
 
-        # Select dropdowns in order
-        gender = config.get('gender', 'Boys')
-        grade = config.get('grade', '8th')
-        town = config.get('town', 'Milton')
-        team = config.get('team', '(White)')
+    # Dedupe
+    all_games = dedupe_games(all_games)
 
-        # Try to select each filter
-        for sel in selects:
-            try:
-                select_obj = Select(sel)
-                for opt in select_obj.options:
-                    opt_lower = opt.text.lower()
-                    # Match gender
-                    if gender.lower() in opt_lower and ('boy' in opt_lower or 'girl' in opt_lower):
-                        logger.info(f"Selecting: {opt.text}")
-                        select_obj.select_by_visible_text(opt.text)
-                        time.sleep(1)
-                        break
-                    # Match grade
-                    elif grade.lower() in opt_lower and ('grade' in opt_lower or opt_lower.endswith('th')):
-                        logger.info(f"Selecting: {opt.text}")
-                        select_obj.select_by_visible_text(opt.text)
-                        time.sleep(1)
-                        break
-                    # Match town
-                    elif town.lower() in opt_lower:
-                        logger.info(f"Selecting: {opt.text}")
-                        select_obj.select_by_visible_text(opt.text)
-                        time.sleep(1)
-                        break
-                    # Match team
-                    elif team.lower() in opt_lower:
-                        logger.info(f"Selecting: {opt.text}")
-                        select_obj.select_by_visible_text(opt.text)
-                        time.sleep(1)
-                        break
-            except Exception:
-                continue
+    calendar_id = config.get('id', 'basketball')
+    ical_data = generate_ical(all_games, team_name, calendar_id)
 
-        # Click Search/View button
-        time.sleep(1)
-        try:
-            for btn_text in ['SEARCH', 'Search', 'VIEW', 'View', 'GO', 'Go']:
-                try:
-                    btn = driver.find_element(By.XPATH, f"//button[contains(text(), '{btn_text}')] | //input[@value='{btn_text}'] | //a[contains(text(), '{btn_text}')]")
-                    logger.info(f"Clicking {btn_text} button")
-                    btn.click()
-                    time.sleep(3)
-                    break
-                except NoSuchElementException:
-                    continue
-        except Exception:
-            logger.info("No search button found")
-
-        # Parse schedule table
-        time.sleep(2)
-        tables = driver.find_elements(By.TAG_NAME, 'table')
-        logger.info(f"Found {len(tables)} tables")
-
-        team_name = config.get('team_name', 'Team')
-
-        for table in tables:
-            rows = table.find_elements(By.TAG_NAME, 'tr')
-            for row in rows:
-                cells = row.find_elements(By.TAG_NAME, 'td')
-                if len(cells) >= 4:
-                    try:
-                        cell_texts = [c.text.strip() for c in cells]
-
-                        # Try to find date, opponent, location, time in the cells
-                        date_str = ""
-                        time_str = ""
-                        opponent = ""
-                        location = ""
-
-                        for text in cell_texts:
-                            # Date pattern
-                            if re.match(r'[A-Za-z]{3}\s*\d{1,2}', text) or re.match(r'\d{1,2}[/-]\d{1,2}', text):
-                                date_str = text
-                            # Time pattern
-                            elif re.match(r'\d{1,2}:\d{2}', text):
-                                time_str = text
-                            # Opponent (usually has @ or vs or team-like name)
-                            elif '@' in text or 'vs' in text.lower() or re.match(r'^[A-Z][a-z]+', text):
-                                if not opponent:
-                                    opponent = re.sub(r'^[@vs.\s]+', '', text, flags=re.I).strip()
-                            # Location (usually longer text)
-                            elif len(text) > 10 and not re.match(r'^\d', text):
-                                location = text
-
-                        if date_str and opponent:
-                            game_dt = parse_date_and_time(date_str, time_str)
-                            if game_dt:
-                                game = {
-                                    'datetime': game_dt,
-                                    'opponent': opponent,
-                                    'location': location,
-                                    'home_team': team_name,
-                                    'league': 'SSYBL'
-                                }
-                                games.append(game)
-                                logger.info(f"Found game: {game_dt.strftime('%b %d')} vs {opponent}")
-                    except Exception as e:
-                        logger.debug(f"Error parsing row: {e}")
-
-        logger.info(f"Found {len(games)} games from SSYBL")
-
-    except Exception as e:
-        logger.error(f"Error scraping SSYBL: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-
-    return games
+    return all_games, ical_data
 
 
 def dedupe_games(games: list[dict]) -> list[dict]:
@@ -490,10 +262,10 @@ def generate_ical(games: list[dict], team_name: str, calendar_id: str) -> bytes:
         event.add('uid', f'{uid}@{calendar_id}')
 
         opponent = game.get('opponent', 'TBD')
-        game_type = game.get('game_type', '')
+        game_type = game.get('game_type', '').lower()
 
-        # Include home/away in title if available
-        if game_type.lower() == 'away':
+        # Include home/away in title
+        if 'away' in game_type or game_type == 'a':
             event.add('summary', f"🏀 @ {opponent}")
         else:
             event.add('summary', f"🏀 vs {opponent}")
@@ -511,8 +283,8 @@ def generate_ical(games: list[dict], team_name: str, calendar_id: str) -> bytes:
         ]
         if game.get('location'):
             desc.append(f"Location: {game['location']}")
-        if game_type:
-            desc.append(f"Game: {game_type}")
+        if game.get('game_type'):
+            desc.append(f"Game: {game['game_type']}")
         event.add('description', '\n'.join(desc))
         event.add('dtstamp', datetime.now(EASTERN))
 
@@ -526,42 +298,6 @@ def generate_ical(games: list[dict], team_name: str, calendar_id: str) -> bytes:
         cal.add_component(event)
 
     return cal.to_ical()
-
-
-def scrape_team(config: dict) -> tuple[list[dict], bytes]:
-    """Scrape a single team's schedule."""
-    driver = None
-    all_games = []
-
-    try:
-        driver = create_driver()
-
-        sites = config.get('sites', [config.get('site', 'metrowest')])
-        if isinstance(sites, str):
-            sites = [sites]
-
-        for site in sites:
-            if site == 'metrowest':
-                games = scrape_metrowest(driver, config)
-            elif site == 'ssybl':
-                games = scrape_ssybl(driver, config)
-            else:
-                logger.warning(f"Unknown site: {site}")
-                continue
-
-            all_games.extend(games)
-
-    finally:
-        if driver:
-            driver.quit()
-
-    all_games = dedupe_games(all_games)
-
-    team_name = config.get('team_name', 'Basketball Team')
-    calendar_id = config.get('id', 'basketball')
-    ical_data = generate_ical(all_games, team_name, calendar_id)
-
-    return all_games, ical_data
 
 
 def generate_index_html(teams: list[dict], base_url: str, results: list[dict]) -> str:
@@ -580,7 +316,7 @@ def generate_index_html(teams: list[dict], base_url: str, results: list[dict]) -
         team_cards.append(f'''
         <div class="team-card">
             <h2>{team_name}</h2>
-            <p class="league">{', '.join(team.get('sites', ['Unknown']))} &bull; {games_info}</p>
+            <p class="league">{team.get('league', 'Basketball')} &bull; {games_info}</p>
             <div class="subscribe-url">
                 <code>{ics_url}</code>
                 <button onclick="copyUrl('{ics_url}')" title="Copy URL">📋</button>
@@ -759,7 +495,7 @@ def main():
     with open(args.config) as f:
         config = json.load(f)
 
-    teams = config.get('teams', [config])  # Support single team or list
+    teams = config.get('teams', [config])
     base_url = args.base_url or config.get('base_url', 'https://example.github.io/ssbball')
 
     # Create output directory
