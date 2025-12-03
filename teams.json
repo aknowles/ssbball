@@ -20,9 +20,18 @@
       "grade": "5th"
     },
     {
+      "id": "milton-8th-boys-white-metrowest",
+      "team_name": "Milton 8th Boys White (MetroWest)",
+      "short_name": "8th Grade (MW)",
+      "client_id": "metrowbb",
+      "team_no": "45309",
+      "league": "MetroWest",
+      "grade": "8th"
+    },
+    {
       "id": "milton-8th-boys-white-ssybl",
       "team_name": "Milton 8th Boys White (SSYBL)",
-      "short_name": "8th Grade",
+      "short_name": "8th Grade (SSYBL)",
       "client_id": "ssybl",
       "team_no": "45443",
       "league": "SSYBL",
@@ -45,7 +54,7 @@
     {
       "id": "8th-grade",
       "name": "8th Grade All",
-      "description": "8th grade games",
+      "description": "8th grade - both leagues",
       "filter": {"grade": "8th"}
     }
   ]
