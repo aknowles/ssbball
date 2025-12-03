@@ -1,0 +1,23 @@
+{
+  "base_url": "https://aknowles.github.io/ssbball",
+  "teams": [
+    {
+      "id": "milton-5th-boys-white",
+      "team_name": "Milton 5th Grade Boys White",
+      "sites": ["metrowest"],
+      "town": "Milton",
+      "grade": "5th Grade",
+      "gender": "Boys",
+      "team": "White"
+    },
+    {
+      "id": "milton-8th-boys-white",
+      "team_name": "Milton 8th Grade Boys White",
+      "sites": ["ssybl"],
+      "town": "Milton",
+      "grade": "8th Grade",
+      "gender": "Boys",
+      "team": "White"
+    }
+  ]
+}
