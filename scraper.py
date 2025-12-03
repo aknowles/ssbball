@@ -409,6 +409,7 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
                 'game_type': str(game_type) if game_type else '',
                 'league': league,
                 'grade': str(grade),
+                'gender': team_config.get('gender', ''),
                 'color': color
             }
             games.append(game)
@@ -547,8 +548,11 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         """Extract team color from calendar."""
         cal_id = cal.get('id', '').lower()
         cal_name = cal.get('name', '').lower()
-        for color in ['white', 'red', 'blue', 'black', 'gold', 'green', 'orange', 'purple']:
+        for color in ['white', 'red', 'blue', 'black', 'gold', 'green', 'orange', 'purple', 'silver', 'grey', 'gray']:
             if color in cal_id or color in cal_name:
+                # Normalize grey/gray to Gray
+                if color in ['grey', 'gray']:
+                    return 'Gray'
                 return color.capitalize()
         return 'Team'
 
@@ -1091,6 +1095,7 @@ def main():
             'type': 'team',
             'id': team_id,
             'name': team_config.get('short_name', team_name),
+            'league': team_config.get('league', ''),
             'description': team_config.get('league', ''),
             'games': len(team_games)
         })
