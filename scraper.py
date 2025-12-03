@@ -49,12 +49,12 @@ TEAM_DISCOVERY_URL = f"{API_BASE}/getTownGenderGradeTeams.php"
 LEAGUES = {
     'ssybl': {
         'name': 'SSYBL',
-        'url': 'https://ssybl.org',
+        'url': 'https://ssybl.org/launch.php',
         'origin': 'https://ssybl.org'
     },
     'metrowbb': {
         'name': 'MetroWest',
-        'url': 'https://metrowestbball.com',
+        'url': 'https://metrowestbball.com/launch.php',
         'origin': 'https://metrowestbball.com'
     }
 }
@@ -115,40 +115,106 @@ def parse_towns_from_html(html: str) -> dict:
     """Parse town options from the HTML page."""
     towns = {}
 
-    # Look for the inputTown or popupTown select element
-    # Pattern: <option value='3553'>Milton</option>
-    pattern = r"<option\s+value=['\"](\d+)['\"]>([^<]+)</option>"
+    # Multiple patterns to handle different HTML formats
+    # Pattern 1: <option value='3553'>Milton</option>
+    # Pattern 2: <option value="3553">Milton</option>
+    patterns = [
+        r"<option\s+value=['\"]?(\d+)['\"]?>([^<]+)</option>",
+        r"value=['\"](\d+)['\"]>([A-Za-z][^<]*)</option>",
+    ]
 
-    # Find the town select section
-    town_section = re.search(r'id=["\'](?:input|popup)Town["\'][^>]*>.*?</select>', html, re.DOTALL | re.IGNORECASE)
-    if town_section:
-        matches = re.findall(pattern, town_section.group())
-        for town_id, town_name in matches:
-            towns[town_name.strip()] = town_id
+    # First try to find the town select section specifically
+    town_section_patterns = [
+        r'id=["\']inputTown["\'][^>]*>(.*?)</select>',
+        r'id=["\']popupTown["\'][^>]*>(.*?)</select>',
+        r'for=["\']inputTown["\'].*?<select[^>]*>(.*?)</select>',
+    ]
 
-    # Fallback: search entire page if section not found
-    if not towns:
-        matches = re.findall(pattern, html)
+    section_html = html
+    for sp in town_section_patterns:
+        match = re.search(sp, html, re.DOTALL | re.IGNORECASE)
+        if match:
+            section_html = match.group(1)
+            logger.debug(f"Found town section with pattern: {sp[:30]}...")
+            break
+
+    # Try each pattern
+    for pattern in patterns:
+        matches = re.findall(pattern, section_html, re.IGNORECASE)
         for town_id, town_name in matches:
+            name = town_name.strip()
             # Filter out non-town options
-            if town_name.strip() and not town_name.startswith('Choose'):
-                towns[town_name.strip()] = town_id
+            if name and not name.lower().startswith('choose') and len(name) > 1:
+                # Avoid duplicates, prefer 4-digit IDs (likely town IDs)
+                if name not in towns or len(town_id) == 4:
+                    towns[name] = town_id
 
+    # If still nothing, search whole page
+    if not towns:
+        logger.debug("Searching entire page for town options...")
+        for pattern in patterns:
+            matches = re.findall(pattern, html, re.IGNORECASE)
+            for town_id, town_name in matches:
+                name = town_name.strip()
+                # Filter: must look like a town name (starts with capital, reasonable length)
+                if (name and
+                    not name.lower().startswith('choose') and
+                    len(name) > 2 and
+                    len(town_id) >= 4 and
+                    name[0].isupper()):
+                    if name not in towns:
+                        towns[name] = town_id
+
+    logger.debug(f"Parsed towns: {list(towns.keys())[:10]}...")
     return towns
 
 
 def get_town_id(client_id: str, town_name: str) -> Optional[str]:
     """Look up town ID by fetching and parsing the league page."""
+    # Hardcoded fallback for known towns (IDs are stable across seasons)
+    KNOWN_TOWNS = {
+        'ssybl': {
+            'Abington': '3556', 'Braintree': '3554', 'Carver': '3571',
+            'Cohasset': '3558', 'Duxbury': '3557', 'E.Bridgewater': '3559',
+            'Halifax': '3572', 'Hanover': '3560', 'Hingham': '3562',
+            'Hull': '3563', 'Marshfield': '3564', 'Milton': '3553',
+            'Norwell': '3565', 'Pembroke': '3566', 'Plymouth North': '3567',
+            'Plymouth South': '3602', 'Rockland': '3568', 'Scituate': '3569',
+            'Silver Lake': '3570', 'Weymouth': '3555', 'Whitman-Hanson': '3561'
+        },
+        'metrowbb': {
+            'Acton-Boxborough': '2660', 'Ashland': '2662', 'Bedford': '2663',
+            'Bellingham': '2664', 'Brookline': '2669', 'Canton': '2670',
+            'Concord': '2671', 'Dedham': '2672', 'Dover-Sherborn': '2674',
+            'Foxborough': '2676', 'Framingham': '2677', 'Franklin': '2678',
+            'Holliston': '2681', 'Hopkinton': '2682', 'Lincoln-Sudbury': '2687',
+            'Medfield': '2689', 'Medway': '2690', 'Milford': '2691',
+            'Millis': '2692', 'Milton': '2693', 'Natick': '2694',
+            'Needham': '2695', 'Newton': '2696', 'Norfolk': '2697',
+            'Norwood': '2698', 'Sharon': '2702', 'Sudbury': '2706',
+            'Walpole': '2708', 'Wayland': '2710', 'Wellesley': '2711',
+            'Westwood': '2714', 'Wrentham': '2717'
+        }
+    }
+
     league = LEAGUES.get(client_id)
     if not league:
         logger.error(f"Unknown league: {client_id}")
         return None
 
+    # Check hardcoded fallback first
+    if client_id in KNOWN_TOWNS:
+        for name, tid in KNOWN_TOWNS[client_id].items():
+            if name.lower() == town_name.lower():
+                logger.info(f"Using known town ID: {town_name} = {tid}")
+                return tid
+
+    # Try to fetch and parse the page
     logger.info(f"Fetching {league['name']} page to find town ID for {town_name}...")
     html = fetch_url(league['url'])
 
     if not html:
-        logger.error(f"Could not fetch {league['url']}")
+        logger.warning(f"Could not fetch {league['url']}, using fallback")
         return None
 
     towns = parse_towns_from_html(html)
@@ -482,12 +548,28 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
 
 
 def generate_index_html(calendars: list[dict], base_url: str, town_name: str) -> str:
-    """Generate the landing page HTML."""
+    """Generate the landing page HTML with collapsible sections by grade."""
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
 
     # Group calendars
     combined_cals = [c for c in calendars if c.get('type') == 'combined']
     team_cals = [c for c in calendars if c.get('type') == 'team']
+
+    # Group team calendars by grade
+    grade_groups = defaultdict(list)
+    for cal in team_cals:
+        # Extract grade from calendar id or name
+        cal_id = cal.get('id', '')
+        cal_name = cal.get('name', '')
+        grade = None
+        for g in ['3rd', '4th', '5th', '6th', '7th', '8th', '3', '4', '5', '6', '7', '8']:
+            if g in cal_id or g in cal_name:
+                grade = g.replace('th', '').replace('rd', '')
+                break
+        if grade:
+            grade_groups[grade].append(cal)
+        else:
+            grade_groups['Other'].append(cal)
 
     def make_card(cal, highlight=False):
         cal_id = cal.get('id', 'calendar')
@@ -515,7 +597,35 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         '''
 
     combined_html = ''.join(make_card(c, highlight=True) for c in combined_cals)
-    team_html = ''.join(make_card(c) for c in team_cals)
+
+    # Build collapsible grade sections
+    grade_sections = []
+    grade_order = ['3', '4', '5', '6', '7', '8', 'Other']
+    grade_labels = {'3': '3rd Grade', '4': '4th Grade', '5': '5th Grade',
+                    '6': '6th Grade', '7': '7th Grade', '8': '8th Grade', 'Other': 'Other'}
+
+    for grade in grade_order:
+        if grade not in grade_groups:
+            continue
+        cals = grade_groups[grade]
+        total_games = sum(c.get('games', 0) for c in cals)
+        cards_html = ''.join(make_card(c) for c in cals)
+        grade_label = grade_labels.get(grade, grade)
+
+        grade_sections.append(f'''
+        <div class="grade-section">
+            <button class="collapsible" onclick="toggleSection(this)">
+                <span class="grade-title">🏀 {grade_label}</span>
+                <span class="grade-info">{len(cals)} teams &bull; {total_games} games</span>
+                <span class="arrow">▼</span>
+            </button>
+            <div class="collapsible-content">
+                {cards_html}
+            </div>
+        </div>
+        ''')
+
+    grade_html = '\n'.join(grade_sections)
 
     return f'''<!DOCTYPE html>
 <html lang="en">
@@ -576,6 +686,57 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         }}
         .btn-primary {{ background: #e63946; color: white; }}
         .btn-secondary {{ background: #1a1a2e; color: white; }}
+
+        /* Collapsible sections */
+        .grade-section {{
+            margin-bottom: 12px;
+        }}
+        .collapsible {{
+            width: 100%;
+            background: #1a1a2e;
+            color: white;
+            padding: 16px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            transition: background 0.2s;
+        }}
+        .collapsible:hover {{
+            background: #2a2a4e;
+        }}
+        .collapsible.active {{
+            border-radius: 10px 10px 0 0;
+        }}
+        .grade-title {{
+            font-weight: 700;
+        }}
+        .grade-info {{
+            font-size: 13px;
+            opacity: 0.8;
+        }}
+        .arrow {{
+            transition: transform 0.3s;
+        }}
+        .collapsible.active .arrow {{
+            transform: rotate(180deg);
+        }}
+        .collapsible-content {{
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: #e8e8e8;
+            border-radius: 0 0 10px 10px;
+            padding: 0 16px;
+        }}
+        .collapsible-content.open {{
+            max-height: 2000px;
+            padding: 16px;
+        }}
+
         .instructions {{
             background: white;
             border-radius: 12px;
@@ -614,9 +775,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
     <p style="color: #666; font-size: 14px;">Best for seeing all games at once</p>
     {combined_html}
 
-    <h2>🏀 Individual Team Calendars</h2>
-    <p style="color: #666; font-size: 14px;">One calendar per team/league</p>
-    {team_html}
+    <h2>🏀 Team Calendars by Grade</h2>
+    <p style="color: #666; font-size: 14px;">Click a grade to expand</p>
+    {grade_html}
 
     <div class="instructions">
         <h2>How to Subscribe</h2>
@@ -641,6 +802,12 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
                 el.style.display = 'block';
                 setTimeout(() => el.style.display = 'none', 2000);
             }});
+        }}
+
+        function toggleSection(btn) {{
+            btn.classList.toggle('active');
+            const content = btn.nextElementSibling;
+            content.classList.toggle('open');
         }}
     </script>
 </body>
