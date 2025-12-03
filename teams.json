@@ -4,23 +4,49 @@
     {
       "id": "milton-5th-boys-white-metrowest",
       "team_name": "Milton 5th Boys White (MetroWest)",
+      "short_name": "5th Grade (MW)",
       "client_id": "metrowbb",
       "team_no": "45323",
-      "league": "MetroWest"
+      "league": "MetroWest",
+      "grade": "5th"
     },
     {
       "id": "milton-5th-boys-white-ssybl",
       "team_name": "Milton 5th Boys White (SSYBL)",
+      "short_name": "5th Grade (SSYBL)",
       "client_id": "ssybl",
       "team_no": "45453",
-      "league": "SSYBL"
+      "league": "SSYBL",
+      "grade": "5th"
     },
     {
       "id": "milton-8th-boys-white-ssybl",
       "team_name": "Milton 8th Boys White (SSYBL)",
+      "short_name": "8th Grade",
       "client_id": "ssybl",
       "team_no": "45443",
-      "league": "SSYBL"
+      "league": "SSYBL",
+      "grade": "8th"
+    }
+  ],
+  "combined_calendars": [
+    {
+      "id": "all",
+      "name": "All Games",
+      "description": "All teams combined",
+      "filter": {}
+    },
+    {
+      "id": "5th-grade",
+      "name": "5th Grade All",
+      "description": "5th grade - both leagues",
+      "filter": {"grade": "5th"}
+    },
+    {
+      "id": "8th-grade",
+      "name": "8th Grade All",
+      "description": "8th grade games",
+      "filter": {"grade": "8th"}
     }
   ]
 }

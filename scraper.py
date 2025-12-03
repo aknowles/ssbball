@@ -16,6 +16,7 @@ import hashlib
 import json
 import logging
 import re
+from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -42,9 +43,8 @@ API_URL = "https://sportsite2.com/getTeamSchedule.php"
 def fetch_schedule(client_id: str, team_no: str, season: str = None) -> dict:
     """Fetch schedule from sportsite2.com API."""
     if not season:
-        # Season is typically the ending year (2025-2026 season = 2026)
         now = datetime.now()
-        if now.month >= 8:  # Aug onwards is next year's season
+        if now.month >= 8:
             season = str(now.year + 1)
         else:
             season = str(now.year)
@@ -55,11 +55,17 @@ def fetch_schedule(client_id: str, team_no: str, season: str = None) -> dict:
         'teamno': team_no
     }).encode('utf-8')
 
+    # Set origin based on client_id
+    if client_id == 'ssybl':
+        origin = 'https://ssybl.org'
+    else:
+        origin = 'https://metrowestbball.com'
+
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'Origin': f'https://{client_id.replace("wbb", "westbball")}.com',
-        'Referer': f'https://{client_id.replace("wbb", "westbball")}.com/',
+        'Origin': origin,
+        'Referer': f'{origin}/',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
 
@@ -80,8 +86,6 @@ def fetch_schedule(client_id: str, team_no: str, season: str = None) -> dict:
 def parse_api_date(date_str: str, time_str: str) -> Optional[datetime]:
     """Parse date and time from API response."""
     try:
-        # Handle various date formats
-        # Format: "12/7/2025" or "2025-12-07"
         if '/' in date_str:
             parts = date_str.split('/')
             if len(parts) == 3:
@@ -95,7 +99,6 @@ def parse_api_date(date_str: str, time_str: str) -> Optional[datetime]:
             else:
                 return None
         else:
-            # Try "Dec 7" format
             match = re.match(r'([A-Za-z]+)\s*(\d{1,2})', date_str)
             if match:
                 months = {
@@ -109,8 +112,7 @@ def parse_api_date(date_str: str, time_str: str) -> Optional[datetime]:
             else:
                 return None
 
-        # Parse time
-        hour, minute = 12, 0  # Default
+        hour, minute = 12, 0
         if time_str:
             time_match = re.search(r'(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?', time_str)
             if time_match:
@@ -129,11 +131,14 @@ def parse_api_date(date_str: str, time_str: str) -> Optional[datetime]:
         return None
 
 
-def parse_schedule_response(data: dict, team_name: str, league: str) -> list[dict]:
+def parse_schedule_response(data: dict, team_config: dict) -> list[dict]:
     """Parse the API response into game objects."""
     games = []
+    team_name = team_config.get('team_name', 'Team')
+    short_name = team_config.get('short_name', team_name)
+    league = team_config.get('league', 'Basketball')
+    grade = team_config.get('grade', '')
 
-    # The API returns various formats - try to handle them
     schedule_data = data.get('schedule', data.get('games', data.get('data', [])))
 
     if isinstance(schedule_data, dict):
@@ -141,7 +146,6 @@ def parse_schedule_response(data: dict, team_name: str, league: str) -> list[dic
 
     if not isinstance(schedule_data, list):
         logger.warning(f"Unexpected schedule format: {type(schedule_data)}")
-        # Try to find any list in the response
         for key, value in data.items():
             if isinstance(value, list) and len(value) > 0:
                 schedule_data = value
@@ -157,7 +161,6 @@ def parse_schedule_response(data: dict, team_name: str, league: str) -> list[dic
             if not isinstance(item, dict):
                 continue
 
-            # Extract fields (field names may vary)
             date_str = item.get('date', item.get('gamedate', item.get('gdate', '')))
             time_str = item.get('time', item.get('gametime', item.get('gtime', '')))
             opponent = item.get('opponent', item.get('opp', item.get('oppname', '')))
@@ -171,7 +174,6 @@ def parse_schedule_response(data: dict, team_name: str, league: str) -> list[dic
             if not game_dt:
                 continue
 
-            # Clean opponent name
             if opponent:
                 opponent = re.sub(r'^[@vs.\s]+', '', str(opponent), flags=re.I).strip()
 
@@ -182,9 +184,11 @@ def parse_schedule_response(data: dict, team_name: str, league: str) -> list[dic
                 'datetime': game_dt,
                 'opponent': opponent,
                 'location': str(location) if location else '',
-                'home_team': team_name,
+                'team_name': team_name,
+                'short_name': short_name,
                 'game_type': str(game_type) if game_type else '',
-                'league': league
+                'league': league,
+                'grade': grade
             }
             games.append(game)
             logger.info(f"Found game: {game_dt.strftime('%b %d %I:%M%p')} vs {opponent}")
@@ -196,39 +200,26 @@ def parse_schedule_response(data: dict, team_name: str, league: str) -> list[dic
     return games
 
 
-def scrape_team(config: dict) -> tuple[list[dict], bytes]:
-    """Fetch schedule for a single team."""
-    all_games = []
-
+def fetch_team_games(config: dict) -> list[dict]:
+    """Fetch games for a single team."""
     team_name = config.get('team_name', 'Basketball Team')
-
-    # Get API parameters
     client_id = config.get('client_id', 'metrowbb')
     team_no = config.get('team_no', '')
     season = config.get('season', None)
-    league = config.get('league', 'MetroWest')
 
     if not team_no:
         logger.error(f"No team_no configured for {team_name}")
-        return [], generate_ical([], team_name, config.get('id', 'team'))
+        return []
 
-    # Fetch from API
     data = fetch_schedule(client_id, team_no, season)
 
     if data:
-        games = parse_schedule_response(data, team_name, league)
-        all_games.extend(games)
+        games = parse_schedule_response(data, config)
         logger.info(f"Found {len(games)} games for {team_name}")
+        return games
     else:
         logger.warning(f"No data returned for {team_name}")
-
-    # Dedupe
-    all_games = dedupe_games(all_games)
-
-    calendar_id = config.get('id', 'basketball')
-    ical_data = generate_ical(all_games, team_name, calendar_id)
-
-    return all_games, ical_data
+        return []
 
 
 def dedupe_games(games: list[dict]) -> list[dict]:
@@ -236,39 +227,45 @@ def dedupe_games(games: list[dict]) -> list[dict]:
     seen = set()
     unique = []
     for game in games:
-        key = (game['datetime'].isoformat(), game['opponent'].lower())
+        key = (game['datetime'].isoformat(), game['opponent'].lower(), game.get('grade', ''))
         if key not in seen:
             seen.add(key)
             unique.append(game)
     return unique
 
 
-def generate_ical(games: list[dict], team_name: str, calendar_id: str) -> bytes:
+def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> bytes:
     """Generate iCalendar content."""
     cal = Calendar()
     cal.add('prodid', f'-//Basketball Schedule//{calendar_id}//EN')
     cal.add('version', '2.0')
     cal.add('calscale', 'GREGORIAN')
     cal.add('method', 'PUBLISH')
-    cal.add('x-wr-calname', f'{team_name} Basketball')
+    cal.add('x-wr-calname', calendar_name)
     cal.add('x-wr-timezone', 'America/New_York')
 
     for game in sorted(games, key=lambda g: g['datetime']):
         event = Event()
 
         uid = hashlib.md5(
-            f"{game['datetime'].isoformat()}-{game['opponent']}-{team_name}".encode()
+            f"{game['datetime'].isoformat()}-{game['opponent']}-{game.get('grade', '')}-{game.get('league', '')}".encode()
         ).hexdigest()
         event.add('uid', f'{uid}@{calendar_id}')
 
         opponent = game.get('opponent', 'TBD')
         game_type = game.get('game_type', '').lower()
+        short_name = game.get('short_name', '')
 
-        # Include home/away in title
-        if 'away' in game_type or game_type == 'a':
-            event.add('summary', f"🏀 @ {opponent}")
+        # Build summary with team identifier if multiple teams
+        if short_name:
+            prefix = f"[{short_name}] "
         else:
-            event.add('summary', f"🏀 vs {opponent}")
+            prefix = ""
+
+        if 'away' in game_type or game_type == 'a':
+            event.add('summary', f"{prefix}🏀 @ {opponent}")
+        else:
+            event.add('summary', f"{prefix}🏀 vs {opponent}")
 
         event.add('dtstart', game['datetime'])
         event.add('dtend', game['datetime'] + timedelta(hours=1, minutes=30))
@@ -277,7 +274,7 @@ def generate_ical(games: list[dict], team_name: str, calendar_id: str) -> bytes:
             event.add('location', game['location'])
 
         desc = [
-            f"Team: {team_name}",
+            f"Team: {game.get('team_name', 'Unknown')}",
             f"Opponent: {opponent}",
             f"League: {game.get('league', 'Basketball')}"
         ]
@@ -288,7 +285,6 @@ def generate_ical(games: list[dict], team_name: str, calendar_id: str) -> bytes:
         event.add('description', '\n'.join(desc))
         event.add('dtstamp', datetime.now(EASTERN))
 
-        # 1-hour reminder
         alarm = Alarm()
         alarm.add('action', 'DISPLAY')
         alarm.add('trigger', timedelta(hours=-1))
@@ -300,139 +296,115 @@ def generate_ical(games: list[dict], team_name: str, calendar_id: str) -> bytes:
     return cal.to_ical()
 
 
-def generate_index_html(teams: list[dict], base_url: str, results: list[dict]) -> str:
+def generate_index_html(calendars: list[dict], base_url: str) -> str:
     """Generate the landing page HTML."""
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
 
-    team_cards = []
-    for team, result in zip(teams, results):
-        team_id = team.get('id', 'team')
-        team_name = team.get('team_name', 'Team')
-        ics_url = f"{base_url}/{team_id}.ics"
-        games_count = result.get('games', 0)
+    # Group calendars
+    combined_cals = [c for c in calendars if c.get('type') == 'combined']
+    team_cals = [c for c in calendars if c.get('type') == 'team']
 
-        games_info = f"{games_count} games" if games_count else "No games found"
+    def make_card(cal, highlight=False):
+        cal_id = cal.get('id', 'calendar')
+        cal_name = cal.get('name', 'Calendar')
+        description = cal.get('description', '')
+        games_count = cal.get('games', 0)
+        ics_url = f"{base_url}/{cal_id}.ics"
 
-        team_cards.append(f'''
-        <div class="team-card">
-            <h2>{team_name}</h2>
-            <p class="league">{team.get('league', 'Basketball')} &bull; {games_info}</p>
+        highlight_class = "highlight" if highlight else ""
+        games_info = f"{games_count} games" if games_count else "No games"
+
+        return f'''
+        <div class="calendar-card {highlight_class}">
+            <h3>{cal_name}</h3>
+            <p class="description">{description} &bull; {games_info}</p>
             <div class="subscribe-url">
                 <code>{ics_url}</code>
                 <button onclick="copyUrl('{ics_url}')" title="Copy URL">📋</button>
             </div>
             <div class="buttons">
-                <a href="{team_id}.ics" class="btn btn-primary" download>Download .ics</a>
-                <a href="webcal://{ics_url.replace('https://', '')}" class="btn btn-secondary">Subscribe (iOS/macOS)</a>
+                <a href="{cal_id}.ics" class="btn btn-primary" download>Download</a>
+                <a href="webcal://{ics_url.replace('https://', '')}" class="btn btn-secondary">Subscribe</a>
             </div>
         </div>
-        ''')
+        '''
+
+    combined_html = ''.join(make_card(c, highlight=True) for c in combined_cals)
+    team_html = ''.join(make_card(c) for c in team_cals)
 
     return f'''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Basketball Calendar Subscriptions</title>
+    <title>Milton Basketball Calendars</title>
     <style>
         * {{ box-sizing: border-box; }}
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 20px;
             background: #f5f5f5;
             color: #333;
         }}
-        h1 {{
-            text-align: center;
-            color: #1a1a2e;
-        }}
-        .subtitle {{
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-        }}
-        .team-card {{
+        h1 {{ text-align: center; color: #1a1a2e; }}
+        h2 {{ color: #1a1a2e; margin-top: 30px; border-bottom: 2px solid #e63946; padding-bottom: 8px; }}
+        .subtitle {{ text-align: center; color: #666; margin-bottom: 30px; }}
+        .calendar-card {{
             background: white;
             border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }}
-        .team-card h2 {{
-            margin: 0 0 8px 0;
-            color: #1a1a2e;
+        .calendar-card.highlight {{
+            border: 2px solid #e63946;
         }}
-        .league {{
-            color: #666;
-            margin: 0 0 16px 0;
-            font-size: 14px;
-        }}
+        .calendar-card h3 {{ margin: 0 0 8px 0; color: #1a1a2e; }}
+        .description {{ color: #666; margin: 0 0 12px 0; font-size: 14px; }}
         .subscribe-url {{
             display: flex;
             align-items: center;
             gap: 8px;
             background: #f0f0f0;
-            padding: 12px;
+            padding: 10px;
             border-radius: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }}
-        .subscribe-url code {{
-            flex: 1;
-            font-size: 12px;
-            word-break: break-all;
-        }}
+        .subscribe-url code {{ flex: 1; font-size: 11px; word-break: break-all; }}
         .subscribe-url button {{
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 16px;
             padding: 4px;
         }}
-        .buttons {{
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }}
+        .buttons {{ display: flex; gap: 10px; flex-wrap: wrap; }}
         .btn {{
             display: inline-block;
-            padding: 10px 20px;
-            border-radius: 8px;
+            padding: 8px 16px;
+            border-radius: 6px;
             text-decoration: none;
             font-weight: 500;
-            font-size: 14px;
-            transition: transform 0.1s;
+            font-size: 13px;
         }}
-        .btn:hover {{ transform: translateY(-1px); }}
-        .btn-primary {{
-            background: #e63946;
-            color: white;
-        }}
-        .btn-secondary {{
-            background: #1a1a2e;
-            color: white;
-        }}
+        .btn-primary {{ background: #e63946; color: white; }}
+        .btn-secondary {{ background: #1a1a2e; color: white; }}
         .instructions {{
             background: white;
             border-radius: 12px;
-            padding: 24px;
+            padding: 20px;
             margin-top: 30px;
         }}
-        .instructions h2 {{
-            margin-top: 0;
-        }}
-        .instructions ul {{
-            padding-left: 20px;
-        }}
-        .instructions li {{
-            margin-bottom: 12px;
-        }}
+        .instructions h2 {{ margin-top: 0; border: none; }}
+        .instructions ul {{ padding-left: 20px; }}
+        .instructions li {{ margin-bottom: 10px; }}
         .footer {{
             text-align: center;
             margin-top: 30px;
             color: #666;
-            font-size: 14px;
+            font-size: 13px;
         }}
         .copied {{
             position: fixed;
@@ -443,31 +415,38 @@ def generate_index_html(teams: list[dict], base_url: str, results: list[dict]) -
             padding: 12px 24px;
             border-radius: 8px;
             display: none;
+            z-index: 1000;
         }}
     </style>
 </head>
 <body>
-    <h1>🏀 Basketball Calendars</h1>
+    <h1>🏀 Milton Basketball</h1>
     <p class="subtitle">Subscribe to automatically sync game schedules to your calendar</p>
 
     <div id="copied" class="copied">URL Copied!</div>
 
-    {''.join(team_cards)}
+    <h2>📅 Combined Calendars</h2>
+    <p style="color: #666; font-size: 14px;">Best for seeing all games at once</p>
+    {combined_html}
+
+    <h2>🏀 Individual Team Calendars</h2>
+    <p style="color: #666; font-size: 14px;">One calendar per team/league</p>
+    {team_html}
 
     <div class="instructions">
         <h2>How to Subscribe</h2>
         <ul>
-            <li><strong>Google Calendar:</strong> Click the + next to "Other calendars" → "From URL" → paste the URL</li>
-            <li><strong>Apple Calendar (Mac):</strong> File → New Calendar Subscription → paste the URL</li>
-            <li><strong>iPhone/iPad:</strong> Click the "Subscribe" button above, or go to Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar</li>
-            <li><strong>Outlook:</strong> Add calendar → Subscribe from web → paste the URL</li>
+            <li><strong>Google Calendar:</strong> Other calendars (+) → From URL → paste URL</li>
+            <li><strong>Apple Calendar:</strong> File → New Calendar Subscription → paste URL</li>
+            <li><strong>iPhone/iPad:</strong> Tap "Subscribe" button, or Settings → Calendar → Accounts → Add Subscribed Calendar</li>
+            <li><strong>Outlook:</strong> Add calendar → Subscribe from web</li>
         </ul>
-        <p><strong>Note:</strong> Subscribed calendars auto-update! Most apps refresh every 24 hours, but schedules are updated every 6 hours.</p>
+        <p><strong>Tip:</strong> Calendars auto-update every 24 hours. Data refreshes every 6 hours.</p>
     </div>
 
     <p class="footer">
         Last updated: {now}<br>
-        Schedules sourced from MetroWest Basketball and SSYBL
+        Data from MetroWest Basketball &amp; SSYBL
     </p>
 
     <script>
@@ -491,71 +470,95 @@ def main():
     parser.add_argument('--base-url', '-u', default='', help='Base URL for calendar links')
     args = parser.parse_args()
 
-    # Load config
     with open(args.config) as f:
         config = json.load(f)
 
-    teams = config.get('teams', [config])
+    teams = config.get('teams', [])
+    combined_calendars = config.get('combined_calendars', [])
     base_url = args.base_url or config.get('base_url', 'https://example.github.io/ssbball')
 
-    # Create output directory
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Process each team
-    results = []
+    # Fetch all team schedules
+    all_games = []
+    team_games = {}  # team_id -> games
+    calendar_info = []  # For index.html
+
     for team_config in teams:
         team_id = team_config.get('id', 'team')
         team_name = team_config.get('team_name', 'Team')
 
-        logger.info(f"Processing {team_name}...")
+        logger.info(f"Fetching {team_name}...")
+        games = fetch_team_games(team_config)
 
-        try:
-            games, ical_data = scrape_team(team_config)
+        team_games[team_id] = games
+        all_games.extend(games)
 
-            # Write ICS file
-            ics_path = output_dir / f"{team_id}.ics"
-            ics_path.write_bytes(ical_data)
-            logger.info(f"Wrote {ics_path} with {len(games)} games")
+        # Generate individual team calendar
+        ical_data = generate_ical(games, team_name, team_id)
+        ics_path = output_dir / f"{team_id}.ics"
+        ics_path.write_bytes(ical_data)
+        logger.info(f"Wrote {ics_path} with {len(games)} games")
 
-            results.append({
-                'team': team_name,
-                'id': team_id,
-                'games': len(games),
-                'file': str(ics_path)
-            })
-        except Exception as e:
-            logger.error(f"Failed to process {team_name}: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            results.append({
-                'team': team_name,
-                'id': team_id,
-                'games': 0,
-                'error': str(e)
-            })
+        calendar_info.append({
+            'type': 'team',
+            'id': team_id,
+            'name': team_config.get('short_name', team_name),
+            'description': f"{team_config.get('league', '')}",
+            'games': len(games)
+        })
+
+    # Generate combined calendars
+    for combo in combined_calendars:
+        combo_id = combo.get('id', 'combined')
+        combo_name = combo.get('name', 'Combined')
+        combo_filter = combo.get('filter', {})
+
+        # Filter games
+        if combo_filter:
+            filtered_games = [
+                g for g in all_games
+                if all(g.get(k) == v for k, v in combo_filter.items())
+            ]
+        else:
+            filtered_games = all_games
+
+        filtered_games = dedupe_games(filtered_games)
+
+        # Generate calendar
+        ical_data = generate_ical(filtered_games, combo_name, combo_id)
+        ics_path = output_dir / f"{combo_id}.ics"
+        ics_path.write_bytes(ical_data)
+        logger.info(f"Wrote {ics_path} with {len(filtered_games)} games")
+
+        calendar_info.insert(0, {  # Add at beginning
+            'type': 'combined',
+            'id': combo_id,
+            'name': combo_name,
+            'description': combo.get('description', ''),
+            'games': len(filtered_games)
+        })
 
     # Generate index.html
-    index_html = generate_index_html(teams, base_url, results)
+    index_html = generate_index_html(calendar_info, base_url)
     index_path = output_dir / 'index.html'
     index_path.write_text(index_html)
     logger.info(f"Wrote {index_path}")
 
-    # Write results summary
+    # Write status
     summary = {
         'updated': datetime.now(EASTERN).isoformat(),
-        'teams': results
+        'calendars': calendar_info
     }
-    summary_path = output_dir / 'status.json'
-    summary_path.write_text(json.dumps(summary, indent=2))
+    (output_dir / 'status.json').write_text(json.dumps(summary, indent=2))
 
     # Print summary
     print("\n" + "="*50)
     print("Scrape Complete")
     print("="*50)
-    for r in results:
-        status = f"{r['games']} games" if r['games'] else f"ERROR: {r.get('error', 'unknown')}"
-        print(f"  {r['team']}: {status}")
+    for cal in calendar_info:
+        print(f"  {cal['name']}: {cal['games']} games")
     print(f"\nOutput: {output_dir}/")
 
 

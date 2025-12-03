@@ -1,9 +1,9 @@
 name: Update Basketball Calendars
 
 on:
-  # Run every 6 hours
+  # Run every 3 hours
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */3 * * *'
 
   # Allow manual trigger
   workflow_dispatch:
