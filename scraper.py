@@ -167,11 +167,25 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
             if not isinstance(item, dict):
                 continue
 
-            date_str = item.get('date', item.get('gamedate', item.get('gdate', '')))
-            time_str = item.get('time', item.get('gametime', item.get('gtime', '')))
+            # Use gamedate (YYYY-MM-DD format) if available, otherwise fallback
+            date_str = item.get('gamedate', item.get('date', item.get('gdate', '')))
+            time_str = item.get('starttime', item.get('time', item.get('gametime', '')))
             opponent = item.get('opponent', item.get('opp', item.get('oppname', '')))
-            location = item.get('location', item.get('loc', item.get('facility', '')))
             game_type = item.get('homeaway', item.get('ha', item.get('type', '')))
+
+            # Build full location with address
+            venue = item.get('location', item.get('loc', item.get('facility', '')))
+            street = item.get('street', '').strip()
+            citystzip = item.get('citystzip', '').strip()
+            directions = item.get('directions', '').strip()
+
+            # Combine venue and address
+            location_parts = [venue]
+            if street and citystzip:
+                location_parts.append(f"{street}, {citystzip}")
+            elif citystzip:
+                location_parts.append(citystzip)
+            location = ' - '.join(filter(None, location_parts))
 
             if not date_str:
                 continue
@@ -180,8 +194,11 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
             if not game_dt:
                 continue
 
+            # Clean opponent name - remove @ prefix for away games
             if opponent:
-                opponent = re.sub(r'^[@vs.\s]+', '', str(opponent), flags=re.I).strip()
+                opponent = str(opponent).strip()
+                if opponent.startswith('@'):
+                    opponent = opponent[1:].strip()
 
             if not opponent:
                 opponent = "TBD"
@@ -189,7 +206,8 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
             game = {
                 'datetime': game_dt,
                 'opponent': opponent,
-                'location': str(location) if location else '',
+                'location': location,
+                'directions': directions,
                 'team_name': team_name,
                 'short_name': short_name,
                 'game_type': str(game_type) if game_type else '',
@@ -288,6 +306,8 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
             desc.append(f"Location: {game['location']}")
         if game.get('game_type'):
             desc.append(f"Game: {game['game_type']}")
+        if game.get('directions'):
+            desc.append(f"\nDirections: {game['directions']}")
         event.add('description', '\n'.join(desc))
         event.add('dtstamp', datetime.now(EASTERN))
 
