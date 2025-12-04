@@ -44,6 +44,7 @@ EASTERN = ZoneInfo("America/New_York")
 API_BASE = "https://sportsite2.com"
 TEAM_SCHEDULE_URL = f"{API_BASE}/getTeamSchedule.php"
 TEAM_DISCOVERY_URL = f"{API_BASE}/getTownGenderGradeTeams.php"
+DIVISION_STANDINGS_URL = f"{API_BASE}/getDivisionStandings.php"
 
 # League configurations
 LEAGUES = {
@@ -271,6 +272,38 @@ def fetch_schedule(client_id: str, team_no: str, season: str = None) -> dict:
 
     logger.info(f"Fetching schedule: clientid={client_id}, teamno={team_no}, season={season}")
     return fetch_api(TEAM_SCHEDULE_URL, data, client_id)
+
+
+def fetch_division_standings(division_no: str, client_id: str) -> dict:
+    """Fetch standings for a division. Returns dict mapping team_no to standings info."""
+    if not division_no:
+        return {}
+
+    data = {'divisionno': division_no}
+    logger.info(f"Fetching standings for division {division_no}")
+
+    result = fetch_api(DIVISION_STANDINGS_URL, data, client_id)
+
+    standings = {}
+    if isinstance(result, list):
+        for team in result:
+            team_no = team.get('teamno', '')
+            if team_no:
+                # Use nlwins/nllosses for non-league, or numwin/numloss for league
+                wins = int(team.get('nlwins', 0) or 0)
+                losses = int(team.get('nllosses', 0) or 0)
+                ties = int(team.get('nlties', 0) or 0)
+                rank = team.get('rank', 0)
+
+                standings[team_no] = {
+                    'wins': wins,
+                    'losses': losses,
+                    'ties': ties,
+                    'rank': rank
+                }
+        logger.info(f"Found standings for {len(standings)} teams in division {division_no}")
+
+    return standings
 
 
 def parse_api_date(date_str: str, time_str: str) -> Optional[datetime]:
@@ -596,6 +629,10 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         description = cal.get('description', '')
         games_count = cal.get('games', 0)
         division_tier = cal.get('division_tier', '')
+        wins = cal.get('wins', 0)
+        losses = cal.get('losses', 0)
+        ties = cal.get('ties', 0)
+        rank = cal.get('rank', 0)
         ics_url = f"{base_url}/{cal_id}.ics"
 
         # Shorter display name for league calendars
@@ -610,14 +647,30 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 
         games_info = f"{games_count} games" if games_count else "No games"
 
-        # Division badge (only shown when toggle is on)
-        division_html = f'<span class="division-badge">{division_tier}</span>' if division_tier else ''
+        # Build division/standings badges (only shown when toggle is on)
+        badges_html = ''
+
+        # Division tier badge
+        if division_tier:
+            badges_html += f'<span class="division-badge">{division_tier}</span>'
+
+        # Rank badge (only for non-combined with valid rank)
+        if rank and rank > 0 and cal_type != 'combined':
+            badges_html += f'<span class="division-badge rank-badge">#{rank}</span>'
+
+        # W-L record badge
+        if wins or losses or ties:
+            if ties:
+                record = f'{wins}-{losses}-{ties}'
+            else:
+                record = f'{wins}-{losses}'
+            badges_html += f'<span class="division-badge record-badge">{record}</span>'
 
         if compact:
             return f'''
             <div class="calendar-card compact {highlight_class}">
                 <div class="card-header">
-                    <span class="card-title">{display_name}{division_html}</span>
+                    <span class="card-title">{display_name}{badges_html}</span>
                     <span class="card-games">{games_info}</span>
                 </div>
                 <div class="card-actions">
@@ -630,7 +683,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         else:
             return f'''
             <div class="calendar-card {highlight_class}">
-                <h3>{cal_name}{division_html}</h3>
+                <h3>{cal_name}{badges_html}</h3>
                 <p class="description">{description} &bull; {games_info}</p>
                 <div class="subscribe-url">
                     <code>{ics_url}</code>
@@ -1213,7 +1266,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
             outline-offset: 2px;
         }}
 
-        /* Division badge */
+        /* Division/standings badges */
         .division-badge {{
             display: none;
             font-size: 0.7rem;
@@ -1223,6 +1276,14 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
             padding: 2px 6px;
             border-radius: 4px;
             margin-left: var(--spacing-xs);
+        }}
+
+        .division-badge.rank-badge {{
+            background: #6366f1;
+        }}
+
+        .division-badge.record-badge {{
+            background: #059669;
         }}
 
         .show-divisions .division-badge {{
@@ -1876,10 +1937,24 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
                         'color': color,
                         'team_no': team['team_no'],
                         'team_name_raw': team['team_name'],
+                        'division_no': team.get('division_no', ''),
                         'division_tier': team.get('division_tier', '')
                     })
 
     logger.info(f"Discovered {len(discovered_teams)} teams")
+
+    # Fetch standings for each unique division
+    all_standings = {}  # Maps team_no -> standings info
+    unique_divisions = set()
+    for team in discovered_teams:
+        div_no = team.get('division_no', '')
+        if div_no:
+            unique_divisions.add((div_no, team['league']))
+
+    logger.info(f"Fetching standings for {len(unique_divisions)} divisions")
+    for div_no, league in unique_divisions:
+        standings = fetch_division_standings(div_no, league)
+        all_standings.update(standings)
 
     # Build team configs and fetch schedules
     team_configs = []
@@ -1903,6 +1978,9 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
         team_name = f"{town_name} {grade}th {gender_name} {color} ({league_name})"
         short_name = f"{grade}{gender[0]}-{color}"
 
+        # Get standings for this team
+        team_standings = all_standings.get(team_no, {})
+
         team_config = {
             'id': team_id,
             'team_name': team_name,
@@ -1913,7 +1991,11 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
             'grade': str(grade),
             'gender': gender,
             'color': color,
-            'division_tier': team.get('division_tier', '')
+            'division_tier': team.get('division_tier', ''),
+            'wins': team_standings.get('wins', 0),
+            'losses': team_standings.get('losses', 0),
+            'ties': team_standings.get('ties', 0),
+            'rank': team_standings.get('rank', 0)
         }
         team_configs.append(team_config)
 
@@ -2010,7 +2092,11 @@ def main():
             'description': team_config.get('league', ''),
             'games': len(team_games),
             'gender': team_config.get('gender', ''),
-            'division_tier': team_config.get('division_tier', '')
+            'division_tier': team_config.get('division_tier', ''),
+            'wins': team_config.get('wins', 0),
+            'losses': team_config.get('losses', 0),
+            'ties': team_config.get('ties', 0),
+            'rank': team_config.get('rank', 0)
         })
 
     # Generate combined calendars
@@ -2040,7 +2126,11 @@ def main():
         combo_gender = combo_filter.get('gender', '')
 
         # Check if all component teams have matching division tiers
+        # Also aggregate W-L records across leagues
         combo_division = ''
+        combo_wins = 0
+        combo_losses = 0
+        combo_ties = 0
         if combo_filter:
             matching_teams = [
                 tc for tc in team_configs
@@ -2051,6 +2141,12 @@ def main():
             if len(division_tiers) == 1:
                 combo_division = division_tiers.pop()
 
+            # Aggregate W-L across all matching teams
+            for tc in matching_teams:
+                combo_wins += tc.get('wins', 0)
+                combo_losses += tc.get('losses', 0)
+                combo_ties += tc.get('ties', 0)
+
         calendar_info.insert(0, {  # Add at beginning
             'type': 'combined',
             'id': combo_id,
@@ -2058,7 +2154,11 @@ def main():
             'description': combo.get('description', ''),
             'games': len(filtered_games),
             'gender': combo_gender,
-            'division_tier': combo_division
+            'division_tier': combo_division,
+            'wins': combo_wins,
+            'losses': combo_losses,
+            'ties': combo_ties,
+            'rank': 0  # No rank for combined calendars
         })
 
     # Generate index.html
