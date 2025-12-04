@@ -289,10 +289,9 @@ def fetch_division_standings(division_no: str, client_id: str) -> dict:
         for team in result:
             team_no = team.get('teamno', '')
             if team_no:
-                # Use nlwins/nllosses for non-league, or numwin/numloss for league
-                wins = int(team.get('nlwins', 0) or 0)
-                losses = int(team.get('nllosses', 0) or 0)
-                ties = int(team.get('nlties', 0) or 0)
+                wins = int(team.get('numwin', 0) or 0)
+                losses = int(team.get('numloss', 0) or 0)
+                ties = int(team.get('numties', 0) or 0)
                 rank = team.get('rank', 0)
 
                 standings[team_no] = {
@@ -649,14 +648,14 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 
         # Build division/standings badges (only shown when toggle is on)
         badges_html = ''
-        has_played = (wins + losses + ties) > 0
 
         # Division tier badge
         if division_tier:
             badges_html += f'<span class="division-badge" title="Division tier">{division_tier}</span>'
 
-        # Rank badge (only for non-combined with valid rank AND games played)
-        if rank and rank > 0 and cal_type != 'combined' and has_played:
+        # Rank badge (only for non-combined with valid rank AND winning record)
+        has_winning_record = wins > losses
+        if rank and rank > 0 and cal_type != 'combined' and has_winning_record:
             badges_html += f'<span class="division-badge rank-badge" title="Current standing in division">#{rank}</span>'
 
         # W-L record badge
