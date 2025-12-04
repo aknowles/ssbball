@@ -1607,14 +1607,6 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         </div>
 
         {grade_html}
-
-        <div class="settings-toggle">
-            <label class="toggle-switch">
-                <input type="checkbox" id="division-toggle" aria-describedby="division-label">
-                <span class="toggle-slider"></span>
-            </label>
-            <span id="division-label">Show division tiers</span>
-        </div>
     </section>
 
     <section class="instructions" aria-labelledby="subscribe-heading">
@@ -1710,6 +1702,14 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         </div>
     </section>
 
+    <div class="settings-toggle">
+        <label class="toggle-switch">
+            <input type="checkbox" id="division-toggle" aria-describedby="division-label">
+            <span class="toggle-slider"></span>
+        </label>
+        <span id="division-label">Show division tiers</span>
+    </div>
+
     <footer class="footer">
         <div class="footer-links">
             <a href="https://github.com/aknowles/ssbball" target="_blank" rel="noopener">
@@ -1789,13 +1789,12 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 
         // ===== Division Toggle =====
         const divisionToggle = document.getElementById('division-toggle');
-        const calendarsSection = document.querySelector('[aria-labelledby="calendars-heading"]');
 
         function applyDivisionToggle(show) {{
             if (show) {{
-                calendarsSection.classList.add('show-divisions');
+                document.body.classList.add('show-divisions');
             }} else {{
-                calendarsSection.classList.remove('show-divisions');
+                document.body.classList.remove('show-divisions');
             }}
             divisionToggle.checked = show;
             localStorage.setItem('showDivisions', show);
