@@ -738,7 +738,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
                 # Get gender code for data attribute (M or F)
                 gender_code = 'M' if gender == 'Boys' else 'F'
                 color_sections.append(f'''
-                <div class="team-group" data-gender="{gender_code}">
+                <div class="team-group" data-gender="{gender_code}" data-games="{team_games}">
                     <div class="team-header">{team_label}</div>
                     <div class="team-calendars">
                         {cards_html}
@@ -1650,7 +1650,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
     </header>
 
     <div class="auto-sync-note" role="status">
-        <span><strong>Always Up to Date:</strong> These calendars automatically sync whenever schedules change on the league websites. Subscribe once and your calendar stays current — no manual updates needed.</span>
+        <span><strong>Automatically Updated:</strong> Schedules are checked hourly during game season. Changes typically appear within an hour of being posted to the league websites. Subscribe once — your calendar stays current automatically.</span>
     </div>
 
     <div id="toast" class="toast" role="alert" aria-live="polite">URL Copied!</div>
@@ -1821,6 +1821,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         // ===== Gender Filter =====
         const filterBtns = document.querySelectorAll('.filter-btn');
         const teamGroups = document.querySelectorAll('.team-group');
+        const gradeSections = document.querySelectorAll('.grade-section');
 
         function applyGenderFilter(filter) {{
             teamGroups.forEach(group => {{
@@ -1829,6 +1830,25 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
                     group.classList.remove('hidden');
                 }} else {{
                     group.classList.add('hidden');
+                }}
+            }});
+
+            // Update grade section counts based on visible teams
+            gradeSections.forEach(section => {{
+                const groups = section.querySelectorAll('.team-group');
+                let visibleTeams = 0;
+                let visibleGames = 0;
+
+                groups.forEach(group => {{
+                    if (!group.classList.contains('hidden')) {{
+                        visibleTeams++;
+                        visibleGames += parseInt(group.dataset.games || 0, 10);
+                    }}
+                }});
+
+                const infoEl = section.querySelector('.grade-info');
+                if (infoEl) {{
+                    infoEl.textContent = `${{visibleTeams}} team${{visibleTeams !== 1 ? 's' : ''}} • ${{visibleGames}} games`;
                 }}
             }});
 
