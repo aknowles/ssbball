@@ -653,19 +653,21 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 
         # Division tier badge
         if division_tier:
-            badges_html += f'<span class="division-badge">{division_tier}</span>'
+            badges_html += f'<span class="division-badge" title="Division tier">{division_tier}</span>'
 
         # Rank badge (only for non-combined with valid rank AND games played)
         if rank and rank > 0 and cal_type != 'combined' and has_played:
-            badges_html += f'<span class="division-badge rank-badge">#{rank}</span>'
+            badges_html += f'<span class="division-badge rank-badge" title="Current standing in division">#{rank}</span>'
 
         # W-L record badge
         if wins or losses or ties:
             if ties:
                 record = f'{wins}-{losses}-{ties}'
+                record_title = "Win-Loss-Tie record"
             else:
                 record = f'{wins}-{losses}'
-            badges_html += f'<span class="division-badge record-badge">{record}</span>'
+                record_title = "Win-Loss record"
+            badges_html += f'<span class="division-badge record-badge" title="{record_title}">{record}</span>'
 
         if compact:
             return f'''
