@@ -595,6 +595,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         cal_type = cal.get('type', 'team')
         description = cal.get('description', '')
         games_count = cal.get('games', 0)
+        division_tier = cal.get('division_tier', '')
         ics_url = f"{base_url}/{cal_id}.ics"
 
         # Shorter display name for league calendars
@@ -609,11 +610,14 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 
         games_info = f"{games_count} games" if games_count else "No games"
 
+        # Division badge (only shown when toggle is on)
+        division_html = f'<span class="division-badge">{division_tier}</span>' if division_tier else ''
+
         if compact:
             return f'''
             <div class="calendar-card compact {highlight_class}">
                 <div class="card-header">
-                    <span class="card-title">{display_name}</span>
+                    <span class="card-title">{display_name}{division_html}</span>
                     <span class="card-games">{games_info}</span>
                 </div>
                 <div class="card-actions">
@@ -626,7 +630,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         else:
             return f'''
             <div class="calendar-card {highlight_class}">
-                <h3>{cal_name}</h3>
+                <h3>{cal_name}{division_html}</h3>
                 <p class="description">{description} &bull; {games_info}</p>
                 <div class="subscribe-url">
                     <code>{ics_url}</code>
@@ -677,8 +681,10 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 
                 cards_html = ''.join(make_card(c, compact=True) for c in cals_sorted)
 
+                # Get gender code for data attribute (M or F)
+                gender_code = 'M' if gender == 'Boys' else 'F'
                 color_sections.append(f'''
-                <div class="team-group">
+                <div class="team-group" data-gender="{gender_code}">
                     <div class="team-header">{team_label}</div>
                     <div class="team-calendars">
                         {cards_html}
@@ -1158,6 +1164,139 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
             min-height: 36px;
         }}
 
+        /* Filter controls */
+        .filter-bar {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+        }}
+
+        .filter-label {{
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+        }}
+
+        .filter-buttons {{
+            display: flex;
+            gap: var(--spacing-xs);
+        }}
+
+        .filter-btn {{
+            padding: var(--spacing-xs) var(--spacing-md);
+            border: 2px solid var(--color-border);
+            background: var(--color-bg-elevated);
+            color: var(--color-text-secondary);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-family: var(--font-family);
+        }}
+
+        .filter-btn:hover {{
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }}
+
+        .filter-btn.active {{
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }}
+
+        .filter-btn:focus-visible {{
+            outline: 3px solid var(--color-primary);
+            outline-offset: 2px;
+        }}
+
+        /* Division badge */
+        .division-badge {{
+            display: none;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: var(--color-secondary);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: var(--spacing-xs);
+        }}
+
+        .show-divisions .division-badge {{
+            display: inline-block;
+        }}
+
+        /* Settings toggle */
+        .settings-toggle {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--color-bg-elevated);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+        }}
+
+        .toggle-switch {{
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }}
+
+        .toggle-switch input {{
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }}
+
+        .toggle-slider {{
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--color-bg-muted);
+            transition: var(--transition-fast);
+            border-radius: 24px;
+        }}
+
+        .toggle-slider:before {{
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: var(--transition-fast);
+            border-radius: 50%;
+            box-shadow: var(--shadow-sm);
+        }}
+
+        .toggle-switch input:checked + .toggle-slider {{
+            background: var(--color-primary);
+        }}
+
+        .toggle-switch input:checked + .toggle-slider:before {{
+            transform: translateX(20px);
+        }}
+
+        .toggle-switch input:focus-visible + .toggle-slider {{
+            outline: 3px solid var(--color-primary);
+            outline-offset: 2px;
+        }}
+
+        /* Hidden team groups (for filtering) */
+        .team-group.hidden {{
+            display: none;
+        }}
+
         /* Instructions card */
         .instructions {{
             background: var(--color-bg-elevated);
@@ -1457,7 +1596,25 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
     <section aria-labelledby="calendars-heading">
         <h2 id="calendars-heading">Team Calendars</h2>
         <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-md);">Click a grade to expand. ⭐ Combined calendars include all leagues.</p>
+
+        <div class="filter-bar" role="group" aria-label="Filter teams">
+            <span class="filter-label">Show:</span>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all" aria-pressed="true">Both</button>
+                <button class="filter-btn" data-filter="M" aria-pressed="false">Boys</button>
+                <button class="filter-btn" data-filter="F" aria-pressed="false">Girls</button>
+            </div>
+        </div>
+
         {grade_html}
+
+        <div class="settings-toggle">
+            <label class="toggle-switch">
+                <input type="checkbox" id="division-toggle" aria-describedby="division-label">
+                <span class="toggle-slider"></span>
+            </label>
+            <span id="division-label">Show division tiers</span>
+        </div>
     </section>
 
     <section class="instructions" aria-labelledby="subscribe-heading">
@@ -1576,6 +1733,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
     </footer>
 
     <script>
+        // ===== Core Functions =====
         function copyUrl(url) {{
             navigator.clipboard.writeText(url).then(() => {{
                 const toast = document.getElementById('toast');
@@ -1598,7 +1756,67 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
             el.setAttribute('aria-expanded', isOpen);
         }}
 
-        // Keyboard accessibility for FAQ
+        // ===== Gender Filter =====
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const teamGroups = document.querySelectorAll('.team-group');
+
+        function applyGenderFilter(filter) {{
+            teamGroups.forEach(group => {{
+                const gender = group.dataset.gender;
+                if (filter === 'all' || gender === filter) {{
+                    group.classList.remove('hidden');
+                }} else {{
+                    group.classList.add('hidden');
+                }}
+            }});
+
+            // Update button states
+            filterBtns.forEach(btn => {{
+                const isActive = btn.dataset.filter === filter;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-pressed', isActive);
+            }});
+
+            // Save preference
+            localStorage.setItem('genderFilter', filter);
+        }}
+
+        filterBtns.forEach(btn => {{
+            btn.addEventListener('click', () => {{
+                applyGenderFilter(btn.dataset.filter);
+            }});
+        }});
+
+        // ===== Division Toggle =====
+        const divisionToggle = document.getElementById('division-toggle');
+        const calendarsSection = document.querySelector('[aria-labelledby="calendars-heading"]');
+
+        function applyDivisionToggle(show) {{
+            if (show) {{
+                calendarsSection.classList.add('show-divisions');
+            }} else {{
+                calendarsSection.classList.remove('show-divisions');
+            }}
+            divisionToggle.checked = show;
+            localStorage.setItem('showDivisions', show);
+        }}
+
+        divisionToggle.addEventListener('change', () => {{
+            applyDivisionToggle(divisionToggle.checked);
+        }});
+
+        // ===== Initialize from localStorage =====
+        document.addEventListener('DOMContentLoaded', () => {{
+            // Restore gender filter
+            const savedFilter = localStorage.getItem('genderFilter') || 'all';
+            applyGenderFilter(savedFilter);
+
+            // Restore division toggle
+            const savedDivisions = localStorage.getItem('showDivisions') === 'true';
+            applyDivisionToggle(savedDivisions);
+        }});
+
+        // ===== Keyboard Accessibility =====
         document.querySelectorAll('.faq-question').forEach(q => {{
             q.addEventListener('keydown', e => {{
                 if (e.key === 'Enter' || e.key === ' ') {{
@@ -1695,7 +1913,8 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
             'league': league_name,
             'grade': str(grade),
             'gender': gender,
-            'color': color
+            'color': color,
+            'division_tier': team.get('division_tier', '')
         }
         team_configs.append(team_config)
 
@@ -1790,7 +2009,9 @@ def main():
             'name': team_config.get('short_name', team_name),
             'league': team_config.get('league', ''),
             'description': team_config.get('league', ''),
-            'games': len(team_games)
+            'games': len(team_games),
+            'gender': team_config.get('gender', ''),
+            'division_tier': team_config.get('division_tier', '')
         })
 
     # Generate combined calendars
@@ -1816,12 +2037,29 @@ def main():
         ics_path.write_bytes(ical_data)
         logger.info(f"Wrote {ics_path} with {len(filtered_games)} games")
 
+        # Get gender from filter
+        combo_gender = combo_filter.get('gender', '')
+
+        # Check if all component teams have matching division tiers
+        combo_division = ''
+        if combo_filter:
+            matching_teams = [
+                tc for tc in team_configs
+                if all(tc.get(k) == v for k, v in combo_filter.items())
+            ]
+            division_tiers = set(tc.get('division_tier', '') for tc in matching_teams)
+            # Only set division if all teams have the same non-empty tier
+            if len(division_tiers) == 1:
+                combo_division = division_tiers.pop()
+
         calendar_info.insert(0, {  # Add at beginning
             'type': 'combined',
             'id': combo_id,
             'name': combo_name,
             'description': combo.get('description', ''),
-            'games': len(filtered_games)
+            'games': len(filtered_games),
+            'gender': combo_gender,
+            'division_tier': combo_division
         })
 
     # Generate index.html
