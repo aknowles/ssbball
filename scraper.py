@@ -1650,7 +1650,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
     </header>
 
     <div class="auto-sync-note" role="status">
-        <span><strong>Always Up to Date:</strong> These calendars automatically sync whenever schedules change on the league websites. Subscribe once and your calendar stays current — no manual updates needed.</span>
+        <span><strong>Automatically Updated:</strong> Schedules are checked hourly during game season. Changes typically appear within an hour of being posted to the league websites. Subscribe once — your calendar stays current automatically.</span>
     </div>
 
     <div id="toast" class="toast" role="alert" aria-live="polite">URL Copied!</div>
