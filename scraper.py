@@ -649,13 +649,14 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 
         # Build division/standings badges (only shown when toggle is on)
         badges_html = ''
+        has_played = (wins + losses + ties) > 0
 
         # Division tier badge
         if division_tier:
             badges_html += f'<span class="division-badge">{division_tier}</span>'
 
-        # Rank badge (only for non-combined with valid rank)
-        if rank and rank > 0 and cal_type != 'combined':
+        # Rank badge (only for non-combined with valid rank AND games played)
+        if rank and rank > 0 and cal_type != 'combined' and has_played:
             badges_html += f'<span class="division-badge rank-badge">#{rank}</span>'
 
         # W-L record badge
