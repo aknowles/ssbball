@@ -1,6 +1,6 @@
 # Basketball iCal Subscriptions
 
-Automatically syncs basketball schedules from MetroWest Basketball and SSYBL to your calendar.
+Automatically syncs basketball schedules from MetroWest Basketball and SSYBL to your calendar. Subscribe once and your calendar stays up to date — schedules are refreshed hourly during game hours (6 AM - 9 PM ET) whenever the league websites are updated.
 
 ## Subscribe to Calendars
 
@@ -149,3 +149,20 @@ open docs/index.html
 | `.github/workflows/update-calendars.yml` | GitHub Actions workflow |
 | `docs/` | Generated output (GitHub Pages) |
 | `bball_ical_service.py` | Standalone server version (optional) |
+
+## Issues & Feedback
+
+Found a bug or have a suggestion? Please [open an issue](https://github.com/aknowles/ssbball/issues).
+
+## Disclaimer
+
+This is an unofficial community project. It is **not affiliated with, endorsed by, or connected to**:
+- [Milton Travel Basketball](http://miltontravelbasketball.com)
+- [MetroWest Basketball](https://metrowestbball.com)
+- [SSYBL](https://ssybl.org)
+
+Schedule data is provided for informational purposes only. Always verify game times and locations with official league sources before traveling.
+
+## License
+
+MIT

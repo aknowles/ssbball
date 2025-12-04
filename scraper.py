@@ -871,6 +871,53 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         .instructions h2 {{ margin-top: 0; border: none; }}
         .instructions ul {{ padding-left: 20px; }}
         .instructions li {{ margin-bottom: 10px; }}
+        .auto-sync-note {{
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }}
+        .faq-section {{
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 16px;
+        }}
+        .faq-item {{
+            border-bottom: 1px solid #eee;
+            padding: 12px 0;
+        }}
+        .faq-item:last-child {{
+            border-bottom: none;
+        }}
+        .faq-question {{
+            font-weight: 600;
+            color: #1a1a2e;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .faq-answer {{
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            color: #555;
+            font-size: 14px;
+        }}
+        .faq-answer.open {{
+            max-height: 500px;
+            padding-top: 10px;
+        }}
+        .faq-answer ul {{
+            margin: 8px 0;
+            padding-left: 20px;
+        }}
+        .faq-answer li {{
+            margin-bottom: 6px;
+        }}
         .footer {{
             text-align: center;
             margin-top: 30px;
@@ -893,6 +940,10 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 <body>
     <h1>🏀 {town_name} Basketball</h1>
     <p class="subtitle">Subscribe to automatically sync game schedules to your calendar</p>
+
+    <div class="auto-sync-note">
+        <strong>Always Up to Date:</strong> These calendars automatically sync whenever schedules change on the league websites. Subscribe once and your calendar stays current — no manual updates needed.
+    </div>
 
     <div id="copied" class="copied">URL Copied!</div>
 
@@ -920,10 +971,89 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         </ul>
     </div>
 
+    <div class="faq-section">
+        <h2>❓ FAQ</h2>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                How do I unsubscribe or remove a calendar?
+                <span class="arrow">▼</span>
+            </div>
+            <div class="faq-answer">
+                <ul>
+                    <li><strong>iPhone/iPad:</strong> Settings → Calendar → Accounts → tap the subscribed calendar → Delete Account</li>
+                    <li><strong>Google Calendar:</strong> Hover over the calendar in the left sidebar → click ⋮ → Settings → scroll down → Unsubscribe</li>
+                    <li><strong>Apple Calendar (Mac):</strong> Right-click the calendar in the sidebar → Unsubscribe</li>
+                    <li><strong>Outlook:</strong> Right-click the calendar → Remove</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                How often does the schedule data update?
+                <span class="arrow">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Schedule data is refreshed <strong>hourly from 6 AM to 9 PM ET</strong> during game season, with one overnight update at 2 AM ET. Your calendar app will typically pull these updates every few hours automatically.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                Why don't I see any games on my calendar?
+                <span class="arrow">▼</span>
+            </div>
+            <div class="faq-answer">
+                <ul>
+                    <li>The league schedule may not be posted yet — check the official league website</li>
+                    <li>Your calendar app may take up to 24 hours to sync initially</li>
+                    <li>Try refreshing the calendar manually in your app's settings</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                Can I add this calendar to multiple devices?
+                <span class="arrow">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Yes! If you use a synced calendar service (Google, iCloud, Outlook), just add the subscription on one device and it will appear on all your synced devices automatically.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                Why are some game locations missing or incorrect?
+                <span class="arrow">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Location data comes directly from the league websites. If a location is missing or wrong, it needs to be corrected there first. Always verify game locations before traveling.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+                I found a bug or have a suggestion. How do I report it?
+                <span class="arrow">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Please submit an issue on our <a href="https://github.com/aknowles/ssbball/issues">GitHub Issues page</a>. We appreciate your feedback!</p>
+            </div>
+        </div>
+    </div>
+
     <p class="footer">
         Last updated: {now}<br>
         Data from MetroWest Basketball &amp; SSYBL<br>
-        <span style="font-size: 11px;">Not affiliated with MetroWest Basketball or SSYBL. For informational purposes only.</span>
+        <span style="font-size: 11px;">
+            This is an unofficial community project. Not affiliated with, endorsed by, or connected to
+            <a href="http://miltontravelbasketball.com">Milton Travel Basketball</a>,
+            <a href="https://metrowestbball.com">MetroWest Basketball</a>, or
+            <a href="https://ssybl.org">SSYBL</a>.
+            For informational purposes only.
+        </span>
     </p>
 
     <script>
@@ -939,6 +1069,13 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
             btn.classList.toggle('active');
             const content = btn.nextElementSibling;
             content.classList.toggle('open');
+        }}
+
+        function toggleFaq(el) {{
+            const answer = el.nextElementSibling;
+            const arrow = el.querySelector('.arrow');
+            answer.classList.toggle('open');
+            arrow.style.transform = answer.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
         }}
     </script>
 </body>
