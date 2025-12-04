@@ -707,277 +707,786 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Subscribe to {town_name} basketball game schedules. Auto-syncing calendars for MetroWest and SSYBL leagues.">
+    <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0f0f1a" media="(prefers-color-scheme: dark)">
     <title>{town_name} Basketball Calendars</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* CSS Custom Properties */
+        :root {{
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --max-width: 900px;
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s ease;
+            --transition-slow: 0.35s ease;
+
+            /* Light mode colors */
+            --color-bg: #f8f9fa;
+            --color-bg-elevated: #ffffff;
+            --color-bg-subtle: #f0f0f0;
+            --color-bg-muted: #e8e8e8;
+            --color-text: #1a1a2e;
+            --color-text-secondary: #5a5a6e;
+            --color-text-muted: #888;
+            --color-primary: #e63946;
+            --color-primary-hover: #d62839;
+            --color-primary-gradient: linear-gradient(135deg, #e63946 0%, #f25c69 100%);
+            --color-secondary: #1a1a2e;
+            --color-secondary-hover: #2a2a4e;
+            --color-accent: #4caf50;
+            --color-accent-bg: #e8f5e9;
+            --color-warning-bg: #fff8e6;
+            --color-border: #e0e0e0;
+            --color-border-light: #eee;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+            --shadow-glow: 0 0 20px rgba(230, 57, 70, 0.15);
+        }}
+
+        /* Dark mode */
+        @media (prefers-color-scheme: dark) {{
+            :root {{
+                --color-bg: #0f0f1a;
+                --color-bg-elevated: #1a1a2e;
+                --color-bg-subtle: #252540;
+                --color-bg-muted: #2a2a4e;
+                --color-text: #f0f0f5;
+                --color-text-secondary: #a0a0b0;
+                --color-text-muted: #707080;
+                --color-primary: #ff4d5a;
+                --color-primary-hover: #ff6b76;
+                --color-primary-gradient: linear-gradient(135deg, #e63946 0%, #ff6b76 100%);
+                --color-secondary: #3a3a5e;
+                --color-secondary-hover: #4a4a7e;
+                --color-accent: #66bb6a;
+                --color-accent-bg: #1a2e1a;
+                --color-warning-bg: #2e2a1a;
+                --color-border: #3a3a5e;
+                --color-border-light: #2a2a4e;
+                --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+                --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+                --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+                --shadow-glow: 0 0 30px rgba(230, 57, 70, 0.2);
+            }}
+        }}
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {{
+            *, *::before, *::after {{
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }}
+        }}
+
+        /* Base styles */
         * {{ box-sizing: border-box; }}
+
+        html {{
+            scroll-behavior: smooth;
+        }}
+
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 900px;
+            font-family: var(--font-family);
+            font-size: 17px;
+            line-height: 1.6;
+            letter-spacing: -0.01em;
+            max-width: var(--max-width);
             margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-            color: #333;
+            padding: var(--spacing-lg);
+            background: var(--color-bg);
+            color: var(--color-text);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }}
-        h1 {{ text-align: center; color: #1a1a2e; }}
-        h2 {{ color: #1a1a2e; margin-top: 30px; border-bottom: 2px solid #e63946; padding-bottom: 8px; }}
-        .subtitle {{ text-align: center; color: #666; margin-bottom: 30px; }}
+
+        /* Hero section */
+        .hero {{
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-md);
+            margin: calc(-1 * var(--spacing-lg));
+            margin-bottom: var(--spacing-xl);
+            background: linear-gradient(135deg, var(--color-secondary) 0%, #2a2a4e 100%);
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+            position: relative;
+            overflow: hidden;
+        }}
+
+        .hero::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.5;
+        }}
+
+        .hero-content {{
+            position: relative;
+            z-index: 1;
+        }}
+
+        .hero-icon {{
+            font-size: 3.5rem;
+            margin-bottom: var(--spacing-md);
+            display: inline-block;
+            animation: bounce 2s ease-in-out infinite;
+        }}
+
+        @keyframes bounce {{
+            0%, 100% {{ transform: translateY(0); }}
+            50% {{ transform: translateY(-8px); }}
+        }}
+
+        .hero h1 {{
+            color: white;
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin: 0 0 var(--spacing-sm) 0;
+            letter-spacing: -0.02em;
+        }}
+
+        .hero .subtitle {{
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            margin: 0;
+            font-weight: 400;
+        }}
+
+        /* Section headers */
+        h2 {{
+            color: var(--color-text);
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin: var(--spacing-xl) 0 var(--spacing-md) 0;
+            padding-bottom: var(--spacing-sm);
+            border-bottom: 3px solid var(--color-primary);
+            display: inline-block;
+        }}
+
+        /* Auto-sync banner */
+        .auto-sync-note {{
+            background: var(--color-accent-bg);
+            border-left: 4px solid var(--color-accent);
+            padding: var(--spacing-md);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            margin-bottom: var(--spacing-lg);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+        }}
+
+        .auto-sync-note::before {{
+            content: '✓';
+            background: var(--color-accent);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+
+        /* Calendar cards */
         .calendar-card {{
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background: var(--color-bg-elevated);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow var(--transition-normal), transform var(--transition-normal);
         }}
+
+        .calendar-card:hover {{
+            box-shadow: var(--shadow-md);
+        }}
+
         .calendar-card.highlight {{
-            border: 2px solid #e63946;
+            border: 2px solid var(--color-primary);
+            box-shadow: var(--shadow-glow);
         }}
-        .calendar-card h3 {{ margin: 0 0 8px 0; color: #1a1a2e; }}
-        .description {{ color: #666; margin: 0 0 12px 0; font-size: 14px; }}
+
+        .calendar-card h3 {{
+            margin: 0 0 var(--spacing-sm) 0;
+            color: var(--color-text);
+            font-weight: 600;
+        }}
+
+        .description {{
+            color: var(--color-text-secondary);
+            margin: 0 0 var(--spacing-md) 0;
+            font-size: 0.9rem;
+        }}
+
         .subscribe-url {{
             display: flex;
             align-items: center;
-            gap: 8px;
-            background: #f0f0f0;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 12px;
+            gap: var(--spacing-sm);
+            background: var(--color-bg-subtle);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-md);
         }}
-        .subscribe-url code {{ flex: 1; font-size: 11px; word-break: break-all; }}
+
+        .subscribe-url code {{
+            flex: 1;
+            font-size: 0.7rem;
+            word-break: break-all;
+            color: var(--color-text-secondary);
+            font-family: 'SF Mono', Monaco, monospace;
+        }}
+
         .subscribe-url button {{
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
+            font-size: 1rem;
+            padding: var(--spacing-xs);
+            transition: transform var(--transition-fast);
         }}
-        .buttons {{ display: flex; gap: 10px; flex-wrap: wrap; }}
+
+        .subscribe-url button:hover {{
+            transform: scale(1.1);
+        }}
+
+        .subscribe-url button:active {{
+            transform: scale(0.95);
+        }}
+
+        /* Buttons */
+        .buttons {{
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+        }}
+
         .btn {{
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
             text-decoration: none;
-            font-weight: 500;
-            font-size: 13px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            min-height: 44px;
         }}
-        .btn-primary {{ background: #e63946; color: white; }}
-        .btn-secondary {{ background: #1a1a2e; color: white; }}
+
+        .btn:focus-visible {{
+            outline: 3px solid var(--color-primary);
+            outline-offset: 2px;
+        }}
+
+        .btn-primary {{
+            background: var(--color-primary-gradient);
+            color: white;
+            box-shadow: 0 2px 8px rgba(230, 57, 70, 0.3);
+        }}
+
+        .btn-primary:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
+        }}
+
+        .btn-primary:active {{
+            transform: translateY(0);
+        }}
+
+        .btn-secondary {{
+            background: var(--color-secondary);
+            color: white;
+        }}
+
+        .btn-secondary:hover {{
+            background: var(--color-secondary-hover);
+        }}
 
         /* Collapsible sections */
         .grade-section {{
-            margin-bottom: 12px;
+            margin-bottom: var(--spacing-md);
         }}
+
         .collapsible {{
             width: 100%;
-            background: #1a1a2e;
+            background: var(--color-secondary);
             color: white;
-            padding: 16px 20px;
+            padding: var(--spacing-md) var(--spacing-lg);
             border: none;
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 16px;
-            transition: background 0.2s;
+            font-size: 1rem;
+            font-family: var(--font-family);
+            transition: all var(--transition-normal);
         }}
+
         .collapsible:hover {{
-            background: #2a2a4e;
+            background: var(--color-secondary-hover);
         }}
+
+        .collapsible:focus-visible {{
+            outline: 3px solid var(--color-primary);
+            outline-offset: 2px;
+        }}
+
         .collapsible.active {{
-            border-radius: 10px 10px 0 0;
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
         }}
+
         .grade-title {{
             font-weight: 700;
         }}
+
         .grade-info {{
-            font-size: 13px;
+            font-size: 0.85rem;
             opacity: 0.8;
+            margin-left: auto;
+            margin-right: var(--spacing-md);
         }}
+
         .arrow {{
-            transition: transform 0.3s;
+            transition: transform var(--transition-normal);
+            font-size: 0.8rem;
         }}
+
         .collapsible.active .arrow {{
             transform: rotate(180deg);
         }}
+
         .collapsible-content {{
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease-out;
-            background: #e8e8e8;
-            border-radius: 0 0 10px 10px;
-            padding: 0 16px;
-        }}
-        .collapsible-content.open {{
-            max-height: 5000px;
-            padding: 16px;
+            transition: max-height var(--transition-slow), padding var(--transition-normal);
+            background: var(--color-bg-muted);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            padding: 0 var(--spacing-md);
         }}
 
-        /* Team groups within grades */
-        .team-group {{
-            margin-bottom: 20px;
+        .collapsible-content.open {{
+            max-height: 5000px;
+            padding: var(--spacing-md);
         }}
+
+        /* Team groups */
+        .team-group {{
+            margin-bottom: var(--spacing-lg);
+        }}
+
+        .team-group:last-child {{
+            margin-bottom: 0;
+        }}
+
         .team-header {{
             font-weight: 700;
-            font-size: 15px;
-            color: #1a1a2e;
-            margin-bottom: 10px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #ddd;
+            font-size: 0.95rem;
+            color: var(--color-text);
+            margin-bottom: var(--spacing-sm);
+            padding-bottom: var(--spacing-xs);
+            border-bottom: 1px solid var(--color-border);
         }}
+
         .team-calendars {{
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--spacing-sm);
         }}
 
         /* Compact calendar cards */
         .calendar-card.compact {{
-            padding: 12px 16px;
+            padding: var(--spacing-md);
             margin-bottom: 0;
+            background: var(--color-bg-elevated);
         }}
+
         .calendar-card.compact .card-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
-        }}
-        .calendar-card.compact .card-title {{
-            font-weight: 600;
-            font-size: 14px;
-            color: #1a1a2e;
-        }}
-        .calendar-card.compact .card-games {{
-            font-size: 12px;
-            color: #666;
-        }}
-        .calendar-card.compact .card-actions {{
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }}
-        .btn-sm {{
-            padding: 6px 12px;
-            font-size: 12px;
-            border: none;
-            cursor: pointer;
+            margin-bottom: var(--spacing-sm);
+            flex-wrap: wrap;
+            gap: var(--spacing-xs);
         }}
 
+        .calendar-card.compact .card-title {{
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--color-text);
+        }}
+
+        .calendar-card.compact .card-games {{
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            background: var(--color-bg-subtle);
+            padding: 2px 8px;
+            border-radius: 12px;
+        }}
+
+        .calendar-card.compact .card-actions {{
+            display: flex;
+            gap: var(--spacing-sm);
+            align-items: center;
+            flex-wrap: wrap;
+        }}
+
+        .btn-sm {{
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: 0.8rem;
+            min-height: 36px;
+        }}
+
+        /* Instructions card */
         .instructions {{
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 30px;
+            background: var(--color-bg-elevated);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-top: var(--spacing-xl);
+            box-shadow: var(--shadow-sm);
         }}
-        .instructions h2 {{ margin-top: 0; border: none; }}
-        .instructions ul {{ padding-left: 20px; }}
-        .instructions li {{ margin-bottom: 10px; }}
-        .auto-sync-note {{
-            background: #e8f5e9;
-            border-left: 4px solid #4caf50;
-            padding: 12px 16px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 20px;
-            font-size: 14px;
+
+        .instructions h2 {{
+            margin-top: 0;
+            border: none;
+            display: block;
         }}
+
+        .instructions ul {{
+            padding-left: var(--spacing-lg);
+            margin: var(--spacing-md) 0;
+        }}
+
+        .instructions li {{
+            margin-bottom: var(--spacing-sm);
+            color: var(--color-text-secondary);
+        }}
+
+        .instructions li strong {{
+            color: var(--color-text);
+        }}
+
+        .tip {{
+            background: var(--color-bg-subtle);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+        }}
+
+        /* Warning box */
+        .warning-box {{
+            background: var(--color-warning-bg);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-top: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+        }}
+
+        .warning-box h2 {{
+            margin-top: 0;
+            border: none;
+            display: block;
+        }}
+
+        .warning-box ul {{
+            padding-left: var(--spacing-lg);
+            margin: var(--spacing-md) 0 0 0;
+        }}
+
+        .warning-box li {{
+            margin-bottom: var(--spacing-sm);
+            color: var(--color-text-secondary);
+        }}
+
+        .warning-box a {{
+            color: var(--color-primary);
+        }}
+
+        /* FAQ section */
         .faq-section {{
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 16px;
+            background: var(--color-bg-elevated);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-top: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
         }}
+
+        .faq-section h2 {{
+            margin-top: 0;
+            border: none;
+            display: block;
+        }}
+
         .faq-item {{
-            border-bottom: 1px solid #eee;
-            padding: 12px 0;
+            border-bottom: 1px solid var(--color-border-light);
+            padding: var(--spacing-md) 0;
         }}
+
         .faq-item:last-child {{
             border-bottom: none;
+            padding-bottom: 0;
         }}
+
+        .faq-item:first-of-type {{
+            padding-top: 0;
+        }}
+
         .faq-question {{
             font-weight: 600;
-            color: #1a1a2e;
+            color: var(--color-text);
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: var(--spacing-xs) 0;
+            transition: color var(--transition-fast);
         }}
+
+        .faq-question:hover {{
+            color: var(--color-primary);
+        }}
+
+        .faq-question:focus-visible {{
+            outline: 2px solid var(--color-primary);
+            outline-offset: 4px;
+            border-radius: 4px;
+        }}
+
         .faq-answer {{
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease-out;
-            color: #555;
-            font-size: 14px;
+            transition: max-height var(--transition-normal), padding var(--transition-normal);
+            color: var(--color-text-secondary);
+            font-size: 0.95rem;
         }}
+
         .faq-answer.open {{
             max-height: 500px;
-            padding-top: 10px;
+            padding-top: var(--spacing-sm);
         }}
+
         .faq-answer ul {{
-            margin: 8px 0;
-            padding-left: 20px;
+            margin: var(--spacing-sm) 0;
+            padding-left: var(--spacing-lg);
         }}
+
         .faq-answer li {{
-            margin-bottom: 6px;
+            margin-bottom: var(--spacing-xs);
         }}
+
+        .faq-answer a {{
+            color: var(--color-primary);
+        }}
+
+        /* Footer */
         .footer {{
             text-align: center;
-            margin-top: 30px;
-            color: #666;
-            font-size: 13px;
+            margin-top: var(--spacing-xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--color-border);
+            color: var(--color-text-muted);
+            font-size: 0.85rem;
         }}
-        .copied {{
+
+        .footer-links {{
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+        }}
+
+        .footer-links a {{
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            transition: color var(--transition-fast);
+        }}
+
+        .footer-links a:hover {{
+            color: var(--color-primary);
+        }}
+
+        .footer-meta {{
+            margin-bottom: var(--spacing-md);
+        }}
+
+        .footer-disclaimer {{
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }}
+
+        .footer-disclaimer a {{
+            color: var(--color-text-secondary);
+        }}
+
+        /* Toast notification */
+        .toast {{
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4caf50;
+            top: var(--spacing-lg);
+            right: var(--spacing-lg);
+            background: var(--color-accent);
             color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            display: none;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            transform: translateX(calc(100% + var(--spacing-lg)));
+            opacity: 0;
+            transition: all var(--transition-normal);
             z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }}
+
+        .toast.show {{
+            transform: translateX(0);
+            opacity: 1;
+        }}
+
+        .toast::before {{
+            content: '✓';
+        }}
+
+        /* Mobile responsive */
+        @media (max-width: 640px) {{
+            body {{
+                padding: var(--spacing-md);
+                font-size: 16px;
+            }}
+
+            .hero {{
+                margin: calc(-1 * var(--spacing-md));
+                margin-bottom: var(--spacing-lg);
+                padding: var(--spacing-lg) var(--spacing-md);
+            }}
+
+            .hero h1 {{
+                font-size: 1.75rem;
+            }}
+
+            .hero .subtitle {{
+                font-size: 1rem;
+            }}
+
+            .hero-icon {{
+                font-size: 2.5rem;
+            }}
+
+            h2 {{
+                font-size: 1.15rem;
+            }}
+
+            .collapsible {{
+                padding: var(--spacing-md);
+            }}
+
+            .grade-info {{
+                display: none;
+            }}
+
+            .calendar-card.compact .card-actions {{
+                width: 100%;
+                justify-content: flex-start;
+            }}
+
+            .btn {{
+                flex: 1;
+                min-width: 80px;
+            }}
+
+            .footer-links {{
+                flex-direction: column;
+                gap: var(--spacing-sm);
+            }}
+
+            .toast {{
+                left: var(--spacing-md);
+                right: var(--spacing-md);
+                transform: translateY(-100%);
+            }}
+
+            .toast.show {{
+                transform: translateY(0);
+            }}
         }}
     </style>
 </head>
 <body>
-    <h1>🏀 {town_name} Basketball</h1>
-    <p class="subtitle">Subscribe to automatically sync game schedules to your calendar</p>
+    <header class="hero">
+        <div class="hero-content">
+            <div class="hero-icon" role="img" aria-label="Basketball">🏀</div>
+            <h1>{town_name} Basketball</h1>
+            <p class="subtitle">Subscribe to automatically sync game schedules to your calendar</p>
+        </div>
+    </header>
 
-    <div class="auto-sync-note">
-        <strong>Always Up to Date:</strong> These calendars automatically sync whenever schedules change on the league websites. Subscribe once and your calendar stays current — no manual updates needed.
+    <div class="auto-sync-note" role="status">
+        <span><strong>Always Up to Date:</strong> These calendars automatically sync whenever schedules change on the league websites. Subscribe once and your calendar stays current — no manual updates needed.</span>
     </div>
 
-    <div id="copied" class="copied">URL Copied!</div>
+    <div id="toast" class="toast" role="alert" aria-live="polite">URL Copied!</div>
 
-    <h2>🏀 Team Calendars</h2>
-    <p style="color: #666; font-size: 14px;">Click a grade to expand. ⭐ Combined calendars include all leagues.</p>
-    {grade_html}
+    <section aria-labelledby="calendars-heading">
+        <h2 id="calendars-heading">Team Calendars</h2>
+        <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-md);">Click a grade to expand. ⭐ Combined calendars include all leagues.</p>
+        {grade_html}
+    </section>
 
-    <div class="instructions">
-        <h2>How to Subscribe</h2>
+    <section class="instructions" aria-labelledby="subscribe-heading">
+        <h2 id="subscribe-heading">How to Subscribe</h2>
         <ul>
             <li><strong>Google Calendar:</strong> Other calendars (+) → From URL → paste URL</li>
             <li><strong>Apple Calendar:</strong> File → New Calendar Subscription → paste URL</li>
             <li><strong>iPhone/iPad:</strong> Tap "Subscribe" button, or Settings → Calendar → Accounts → Add Subscribed Calendar</li>
             <li><strong>Outlook:</strong> Add calendar → Subscribe from web</li>
         </ul>
-        <p><strong>Tip:</strong> Subscribed calendars auto-update periodically (usually every few hours). Data is refreshed hourly during game hours.</p>
-    </div>
+        <p class="tip"><strong>Tip:</strong> Subscribed calendars auto-update periodically (usually every few hours). Data is refreshed hourly during game hours.</p>
+    </section>
 
-    <div class="instructions" style="margin-top: 16px; background: #fff8e6;">
-        <h2>⚠️ Important Notes</h2>
+    <section class="warning-box" aria-labelledby="notes-heading">
+        <h2 id="notes-heading">⚠️ Important Notes</h2>
         <ul>
             <li>These calendars include <strong>league games only</strong> — tournaments, scrimmages, and non-league games are not included.</li>
             <li>Schedule data is sourced from <a href="https://metrowestbball.com">MetroWest Basketball</a> and <a href="https://ssybl.org">SSYBL</a>. Always verify with official league sources.</li>
             <li>Game times and locations may change — check for updates before traveling.</li>
         </ul>
-    </div>
+    </section>
 
-    <div class="faq-section">
-        <h2>❓ FAQ</h2>
+    <section class="faq-section" aria-labelledby="faq-heading">
+        <h2 id="faq-heading">Frequently Asked Questions</h2>
 
         <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 How do I unsubscribe or remove a calendar?
-                <span class="arrow">▼</span>
+                <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
                 <ul>
@@ -990,9 +1499,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         </div>
 
         <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 How often does the schedule data update?
-                <span class="arrow">▼</span>
+                <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
                 <p>Schedule data is refreshed <strong>hourly from 6 AM to 9 PM ET</strong> during game season, with one overnight update at 2 AM ET. Your calendar app will typically pull these updates every few hours automatically.</p>
@@ -1000,9 +1509,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         </div>
 
         <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 Why don't I see any games on my calendar?
-                <span class="arrow">▼</span>
+                <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
                 <ul>
@@ -1014,9 +1523,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         </div>
 
         <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 Can I add this calendar to multiple devices?
-                <span class="arrow">▼</span>
+                <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
                 <p>Yes! If you use a synced calendar service (Google, iCloud, Outlook), just add the subscription on one device and it will appear on all your synced devices automatically.</p>
@@ -1024,9 +1533,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         </div>
 
         <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 Why are some game locations missing or incorrect?
-                <span class="arrow">▼</span>
+                <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
                 <p>Location data comes directly from the league websites. If a location is missing or wrong, it needs to be corrected there first. Always verify game locations before traveling.</p>
@@ -1034,34 +1543,44 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         </div>
 
         <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 I found a bug or have a suggestion. How do I report it?
-                <span class="arrow">▼</span>
+                <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
                 <p>Please submit an issue on our <a href="https://github.com/aknowles/ssbball/issues">GitHub Issues page</a>. We appreciate your feedback!</p>
             </div>
         </div>
-    </div>
+    </section>
 
-    <p class="footer">
-        Last updated: {now}<br>
-        Data from MetroWest Basketball &amp; SSYBL<br>
-        <span style="font-size: 11px;">
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="https://github.com/aknowles/ssbball" target="_blank" rel="noopener">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                View on GitHub
+            </a>
+            <a href="https://github.com/aknowles/ssbball/issues" target="_blank" rel="noopener">
+                Report an Issue
+            </a>
+        </div>
+        <div class="footer-meta">
+            Last updated: {now}
+        </div>
+        <p class="footer-disclaimer">
             This is an unofficial community project. Not affiliated with, endorsed by, or connected to
             <a href="http://miltontravelbasketball.com">Milton Travel Basketball</a>,
             <a href="https://metrowestbball.com">MetroWest Basketball</a>, or
             <a href="https://ssybl.org">SSYBL</a>.
             For informational purposes only.
-        </span>
-    </p>
+        </p>
+    </footer>
 
     <script>
         function copyUrl(url) {{
             navigator.clipboard.writeText(url).then(() => {{
-                const el = document.getElementById('copied');
-                el.style.display = 'block';
-                setTimeout(() => el.style.display = 'none', 2000);
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2500);
             }});
         }}
 
@@ -1074,9 +1593,20 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
         function toggleFaq(el) {{
             const answer = el.nextElementSibling;
             const arrow = el.querySelector('.arrow');
-            answer.classList.toggle('open');
-            arrow.style.transform = answer.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+            const isOpen = answer.classList.toggle('open');
+            arrow.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+            el.setAttribute('aria-expanded', isOpen);
         }}
+
+        // Keyboard accessibility for FAQ
+        document.querySelectorAll('.faq-question').forEach(q => {{
+            q.addEventListener('keydown', e => {{
+                if (e.key === 'Enter' || e.key === ' ') {{
+                    e.preventDefault();
+                    toggleFaq(q);
+                }}
+            }});
+        }});
     </script>
 </body>
 </html>
