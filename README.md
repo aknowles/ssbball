@@ -136,6 +136,10 @@ open docs/index.html
 - The `town_name` must match exactly what appears in the league website dropdown
 - Check spelling and capitalization
 
+**Want notifications when the workflow fails?**
+- The workflow automatically creates a GitHub issue with the `workflow-failure` label when it fails
+- Close the issue after fixing the problem; a new one will be created on the next failure
+
 ## Files
 
 | File | Purpose |
