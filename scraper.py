@@ -698,6 +698,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         ties = cal.get('ties', 0)
         rank = cal.get('rank', 0)
         ics_url = f"{base_url}/{cal_id}.ics"
+        league = cal.get('league', '')
 
         # Shorter display name for league calendars
         if cal_type == 'combined':
@@ -705,7 +706,6 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             highlight_class = "highlight"
         else:
             # Extract just the league name
-            league = cal.get('league', '')
             display_name = f"{league}" if league else cal_name
             highlight_class = ""
 
