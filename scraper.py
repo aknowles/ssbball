@@ -708,7 +708,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         # Division tier badge
         if division_tier:
-            badges_html += f'<span class="division-badge" title="Division tier">{division_tier}</span>'
+            division_tooltip = f"{league} Division {division_tier}" if league else f"Division {division_tier}"
+            badges_html += f'<span class="division-badge" title="{division_tooltip}">{division_tier}</span>'
 
         # Rank badge (only for non-combined with valid rank AND winning record)
         has_winning_record = wins > losses
