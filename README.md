@@ -39,6 +39,7 @@ Want to set this up for your own town? It's easy — just change the config file
   "grades": [3, 4, 5, 6, 7, 8],
   "genders": ["M", "F"],
   "colors": [],
+  "include_nl_games": true,
   "base_url": "https://YOUR-USERNAME.github.io/YOUR-REPO"
 }
 ```
@@ -59,14 +60,44 @@ The Action will run automatically and discover all your town's teams!
 | `grades` | Grade levels to include | `[5, 6, 7, 8]` |
 | `genders` | `"M"` for boys, `"F"` for girls | `["M", "F"]` for both |
 | `colors` | Filter to specific teams (empty = all) | `["White", "Red"]` or `[]` |
+| `include_nl_games` | Include tournaments/playoffs (default: true) | `true` or `false` |
 | `base_url` | Your GitHub Pages URL | `"https://user.github.io/repo"` |
 
-### Supported Leagues
+### Built-in Leagues
 
 | League | ID | Website |
 |--------|-----|---------|
 | SSYBL | `ssybl` | ssybl.org |
 | MetroWest Basketball | `metrowbb` | metrowestbball.com |
+
+### Adding Custom Leagues
+
+Other leagues using the sportsite2 platform can be added via `custom_leagues`:
+
+```json
+{
+  "town_name": "Gloucester",
+  "leagues": ["capeann"],
+  "custom_leagues": {
+    "capeann": {
+      "name": "Cape Ann",
+      "origin": "https://capeannybl.com"
+    },
+    "cmybl": {
+      "name": "CMYBL",
+      "origin": "https://cmybl.org"
+    }
+  },
+  "grades": [5, 6],
+  "genders": ["M", "F"],
+  "base_url": "https://YOUR-USERNAME.github.io/YOUR-REPO"
+}
+```
+
+Known compatible leagues:
+- Cape Ann Youth Basketball League (capeannybl.com)
+- CMYBL (cmybl.org)
+- RI MetroWest Basketball (rimetrowestbball.com)
 
 ## Manual Trigger
 

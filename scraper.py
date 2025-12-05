@@ -47,8 +47,8 @@ TEAM_NL_SCHEDULE_URL = f"{API_BASE}/getTeamNLSchedule.php"
 TEAM_DISCOVERY_URL = f"{API_BASE}/getTownGenderGradeTeams.php"
 DIVISION_STANDINGS_URL = f"{API_BASE}/getDivisionStandings.php"
 
-# League configurations
-LEAGUES = {
+# Default league configurations (can be extended via custom_leagues in config)
+DEFAULT_LEAGUES = {
     'ssybl': {
         'name': 'SSYBL',
         'url': 'https://ssybl.org/launch.php',
@@ -60,6 +60,25 @@ LEAGUES = {
         'origin': 'https://metrowestbball.com'
     }
 }
+
+# Global leagues dict (updated at runtime with custom_leagues)
+LEAGUES = DEFAULT_LEAGUES.copy()
+
+
+def get_leagues(config: dict = None) -> dict:
+    """Get leagues config, merging defaults with any custom_leagues from config."""
+    leagues = DEFAULT_LEAGUES.copy()
+    if config:
+        custom = config.get('custom_leagues', {})
+        for league_id, league_config in custom.items():
+            # Build full league config from custom entry
+            origin = league_config.get('origin', '')
+            leagues[league_id] = {
+                'name': league_config.get('name', league_id.upper()),
+                'url': f"{origin}/launch.php" if origin else '',
+                'origin': origin
+            }
+    return leagues
 
 
 def get_season() -> str:
@@ -614,7 +633,7 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
     return cal.to_ical()
 
 
-def generate_index_html(calendars: list[dict], base_url: str, town_name: str) -> str:
+def generate_index_html(calendars: list[dict], base_url: str, town_name: str, include_nl_games: bool = True) -> str:
     """Generate the landing page HTML with hierarchical sections: Grade -> Color -> Calendars."""
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
 
@@ -800,6 +819,12 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
             ''')
 
     grade_html = '\n'.join(grade_sections)
+
+    # Note about what games are included
+    if include_nl_games:
+        games_included_note = 'These calendars include <strong>league games and tournaments/playoffs</strong> (🏆 indicates tournament games).'
+    else:
+        games_included_note = 'These calendars include <strong>league games only</strong> — tournaments and playoffs are not included.'
 
     return f'''<!DOCTYPE html>
 <html lang="en">
@@ -1724,8 +1749,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str) ->
     <section class="warning-box" aria-labelledby="notes-heading">
         <h2 id="notes-heading">⚠️ Important Notes</h2>
         <ul>
-            <li>These calendars include <strong>league games only</strong> — tournaments, scrimmages, and non-league games are not included.</li>
-            <li>Schedule data is sourced from <a href="https://metrowestbball.com">MetroWest Basketball</a> and <a href="https://ssybl.org">SSYBL</a>. Always verify with official league sources.</li>
+            <li>{games_included_note}</li>
+            <li>Schedule data is sourced from league websites. Always verify with official league sources.</li>
             <li>Game times and locations may change — check for updates before traveling.</li>
         </ul>
     </section>
@@ -1957,6 +1982,10 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
 
     Returns: (team_configs, all_games)
     """
+    # Update global LEAGUES with any custom leagues from config
+    global LEAGUES
+    LEAGUES = get_leagues(config)
+
     town_name = config.get('town_name', 'Milton')
     leagues = config.get('leagues', ['ssybl', 'metrowbb'])
     grades = config.get('grades', [5, 8])
@@ -2076,6 +2105,10 @@ def main():
 
     with open(args.config) as f:
         config = json.load(f)
+
+    # Initialize leagues (merge defaults with any custom_leagues)
+    global LEAGUES
+    LEAGUES = get_leagues(config)
 
     base_url = args.base_url or config.get('base_url', 'https://example.github.io/ssbball')
     town_name = config.get('town_name', 'Milton')
@@ -2225,7 +2258,7 @@ def main():
         })
 
     # Generate index.html
-    index_html = generate_index_html(calendar_info, base_url, town_name)
+    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games)
     index_path = output_dir / 'index.html'
     index_path.write_text(index_html)
     logger.info(f"Wrote {index_path}")
