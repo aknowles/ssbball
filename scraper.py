@@ -498,7 +498,8 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
                 'grade': str(grade),
                 'gender': team_config.get('gender', ''),
                 'color': color,
-                'is_tournament': is_tournament
+                'is_tournament': is_tournament,
+                'jerseys': team_config.get('jerseys', {})
             }
             games.append(game)
             logger.info(f"Found game: {game_dt.strftime('%b %d %I:%M%p')} vs {opponent}")
@@ -609,6 +610,13 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
             desc.append(f"Location: {game['location']}")
         if game.get('game_type') and not is_tournament:
             desc.append(f"Game: {game['game_type']}")
+        # Add jersey info based on home/away
+        jerseys = game.get('jerseys', {})
+        if jerseys:
+            is_away = 'away' in game_type or game_type == 'a'
+            jersey_color = jerseys.get('away' if is_away else 'home')
+            if jersey_color:
+                desc.append(f"Jersey: {jersey_color}")
         if game.get('directions'):
             desc.append(f"\nDirections: {game['directions']}")
         event.add('description', '\n'.join(desc))
@@ -708,7 +716,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         # Division tier badge
         if division_tier:
-            badges_html += f'<span class="division-badge" title="Division tier">{division_tier}</span>'
+            division_tooltip = f"{league} Division {division_tier}" if league else f"Division {division_tier}"
+            badges_html += f'<span class="division-badge" title="{division_tooltip}">{division_tier}</span>'
 
         # Rank badge (only for non-combined with valid rank AND winning record)
         has_winning_record = wins > losses
@@ -1992,6 +2001,7 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
     genders = config.get('genders', ['M'])
     colors = config.get('colors', ['White'])  # Filter to specific colors, or empty for all
     include_nl_games = config.get('include_nl_games', True)  # Include tournaments/playoffs by default
+    jerseys = config.get('jerseys', {})  # Jersey colors for home/away games
     season = get_season()
 
     # Cache town IDs per league
@@ -2085,7 +2095,8 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
             'wins': team_standings.get('wins', 0),
             'losses': team_standings.get('losses', 0),
             'ties': team_standings.get('ties', 0),
-            'rank': team_standings.get('rank', 0)
+            'rank': team_standings.get('rank', 0),
+            'jerseys': jerseys
         }
         team_configs.append(team_config)
 
