@@ -43,6 +43,7 @@ EASTERN = ZoneInfo("America/New_York")
 # API endpoints
 API_BASE = "https://sportsite2.com"
 TEAM_SCHEDULE_URL = f"{API_BASE}/getTeamSchedule.php"
+TEAM_NL_SCHEDULE_URL = f"{API_BASE}/getTeamNLSchedule.php"
 TEAM_DISCOVERY_URL = f"{API_BASE}/getTownGenderGradeTeams.php"
 DIVISION_STANDINGS_URL = f"{API_BASE}/getDivisionStandings.php"
 
@@ -274,6 +275,21 @@ def fetch_schedule(client_id: str, team_no: str, season: str = None) -> dict:
     return fetch_api(TEAM_SCHEDULE_URL, data, client_id)
 
 
+def fetch_nl_schedule(client_id: str, team_no: str, season: str = None) -> dict:
+    """Fetch non-league schedule (tournaments, playoffs) from sportsite2.com API."""
+    if not season:
+        season = get_season()
+
+    data = {
+        'clientid': client_id,
+        'yrseason': season,
+        'teamno': team_no
+    }
+
+    logger.info(f"Fetching NL schedule: clientid={client_id}, teamno={team_no}, season={season}")
+    return fetch_api(TEAM_NL_SCHEDULE_URL, data, client_id)
+
+
 def fetch_division_standings(division_no: str, client_id: str) -> dict:
     """Fetch standings for a division. Returns dict mapping team_no to standings info."""
     if not division_no:
@@ -447,6 +463,10 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
             if not opponent:
                 opponent = "TBD"
 
+            # Check if this is a tournament/non-league game
+            week = item.get('week', '')
+            is_tournament = week == 'NL' or game_type == 'Tourn'
+
             game = {
                 'datetime': game_dt,
                 'opponent': opponent,
@@ -458,7 +478,8 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
                 'league': league,
                 'grade': str(grade),
                 'gender': team_config.get('gender', ''),
-                'color': color
+                'color': color,
+                'is_tournament': is_tournament
             }
             games.append(game)
             logger.info(f"Found game: {game_dt.strftime('%b %d %I:%M%p')} vs {opponent}")
@@ -470,8 +491,8 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
     return games
 
 
-def fetch_team_games(config: dict) -> list[dict]:
-    """Fetch games for a single team."""
+def fetch_team_games(config: dict, include_nl_games: bool = True) -> list[dict]:
+    """Fetch games for a single team, optionally including non-league games."""
     team_name = config.get('team_name', 'Basketball Team')
     client_id = config.get('client_id', 'metrowbb')
     team_no = config.get('team_no', '')
@@ -481,15 +502,26 @@ def fetch_team_games(config: dict) -> list[dict]:
         logger.error(f"No team_no configured for {team_name}")
         return []
 
-    data = fetch_schedule(client_id, team_no, season)
+    games = []
 
+    # Fetch regular league schedule
+    data = fetch_schedule(client_id, team_no, season)
     if data:
-        games = parse_schedule_response(data, config)
-        logger.info(f"Found {len(games)} games for {team_name}")
-        return games
+        league_games = parse_schedule_response(data, config)
+        logger.info(f"Found {len(league_games)} league games for {team_name}")
+        games.extend(league_games)
     else:
-        logger.warning(f"No data returned for {team_name}")
-        return []
+        logger.warning(f"No league data returned for {team_name}")
+
+    # Fetch non-league schedule (tournaments, playoffs) if enabled
+    if include_nl_games:
+        nl_data = fetch_nl_schedule(client_id, team_no, season)
+        if nl_data:
+            nl_games = parse_schedule_response(nl_data, config)
+            logger.info(f"Found {len(nl_games)} non-league games for {team_name}")
+            games.extend(nl_games)
+
+    return games
 
 
 def dedupe_games(games: list[dict]) -> list[dict]:
@@ -525,6 +557,7 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
         opponent = game.get('opponent', 'TBD')
         game_type = game.get('game_type', '').lower()
         short_name = game.get('short_name', '')
+        is_tournament = game.get('is_tournament', False)
 
         # Build summary with team identifier if multiple teams
         if short_name:
@@ -532,10 +565,13 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
         else:
             prefix = ""
 
+        # Use trophy emoji for tournament/playoff games
+        emoji = "🏆" if is_tournament else "🏀"
+
         if 'away' in game_type or game_type == 'a':
-            event.add('summary', f"{prefix}🏀 @ {opponent}")
+            event.add('summary', f"{prefix}{emoji} @ {opponent}")
         else:
-            event.add('summary', f"{prefix}🏀 vs {opponent}")
+            event.add('summary', f"{prefix}{emoji} vs {opponent}")
 
         event.add('dtstart', game['datetime'])
         event.add('dtend', game['datetime'] + timedelta(hours=1))
@@ -548,9 +584,11 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
             f"Opponent: {opponent}",
             f"League: {game.get('league', 'Basketball')}"
         ]
+        if is_tournament:
+            desc.append("Type: Tournament/Playoff")
         if game.get('location'):
             desc.append(f"Location: {game['location']}")
-        if game.get('game_type'):
+        if game.get('game_type') and not is_tournament:
             desc.append(f"Game: {game['game_type']}")
         if game.get('directions'):
             desc.append(f"\nDirections: {game['directions']}")
@@ -1924,6 +1962,7 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
     grades = config.get('grades', [5, 8])
     genders = config.get('genders', ['M'])
     colors = config.get('colors', ['White'])  # Filter to specific colors, or empty for all
+    include_nl_games = config.get('include_nl_games', True)  # Include tournaments/playoffs by default
     season = get_season()
 
     # Cache town IDs per league
@@ -2022,7 +2061,7 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
         team_configs.append(team_config)
 
         # Fetch games
-        games = fetch_team_games(team_config)
+        games = fetch_team_games(team_config, include_nl_games=include_nl_games)
         all_games.extend(games)
 
     return team_configs, all_games
@@ -2045,6 +2084,8 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Check if using new dynamic config or legacy static config
+    include_nl_games = config.get('include_nl_games', True)
+
     if 'teams' in config:
         # Legacy mode: static team definitions
         logger.info("Using legacy static team configuration")
@@ -2059,7 +2100,7 @@ def main():
             team_name = team_config.get('team_name', 'Team')
 
             logger.info(f"Fetching {team_name}...")
-            games = fetch_team_games(team_config)
+            games = fetch_team_games(team_config, include_nl_games=include_nl_games)
             all_games.extend(games)
             team_configs.append(team_config)
     else:
