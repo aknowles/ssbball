@@ -5,5 +5,9 @@
   "genders": ["M", "F"],
   "colors": [],
   "include_nl_games": true,
-  "base_url": "https://aknowles.github.io/ssbball"
+  "base_url": "https://aknowles.github.io/ssbball",
+  "jerseys": {
+    "home": "White",
+    "away": "Red"
+  }
 }
