@@ -70,15 +70,15 @@ The Action will run automatically and discover all your town's teams!
 | SSYBL | `ssybl` | ssybl.org |
 | MetroWest Basketball | `metrowbb` | metrowestbball.com |
 
-### Adding Custom Leagues
+### Adding Other Leagues
 
-Other leagues using the sportsite2 platform can be added via `custom_leagues`:
+Other leagues using the sportsite2 platform can be added via `other_leagues`:
 
 ```json
 {
   "town_name": "Gloucester",
   "leagues": ["capeann"],
-  "custom_leagues": {
+  "other_leagues": {
     "capeann": {
       "name": "Cape Ann",
       "origin": "https://capeannybl.com"

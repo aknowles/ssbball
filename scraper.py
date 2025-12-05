@@ -61,17 +61,17 @@ DEFAULT_LEAGUES = {
     }
 }
 
-# Global leagues dict (updated at runtime with custom_leagues)
+# Global leagues dict (updated at runtime with other_leagues)
 LEAGUES = DEFAULT_LEAGUES.copy()
 
 
 def get_leagues(config: dict = None) -> dict:
-    """Get leagues config, merging defaults with any custom_leagues from config."""
+    """Get leagues config, merging defaults with any other_leagues from config."""
     leagues = DEFAULT_LEAGUES.copy()
     if config:
-        custom = config.get('custom_leagues', {})
-        for league_id, league_config in custom.items():
-            # Build full league config from custom entry
+        other = config.get('other_leagues', {})
+        for league_id, league_config in other.items():
+            # Build full league config from entry
             origin = league_config.get('origin', '')
             leagues[league_id] = {
                 'name': league_config.get('name', league_id.upper()),
