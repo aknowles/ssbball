@@ -272,10 +272,36 @@ def discover_teams(client_id: str, town_no: str, grade: int, gender: str, season
 
 
 def parse_team_color(team_name: str) -> str:
-    """Extract color from team name like '(White) D2'."""
+    """Extract color from team name.
+
+    Tries parentheses format first like '(White) D2', then falls back to
+    searching for known color words anywhere in the name. This ensures
+    consistent color extraction across leagues with different team name formats.
+    """
+    # First try parentheses format (most specific)
     match = re.search(r'\((\w+)\)', team_name)
     if match:
-        return match.group(1)
+        candidate = match.group(1)
+        # Verify it's actually a color word
+        known_colors = ['white', 'red', 'blue', 'black', 'gold', 'green',
+                        'orange', 'purple', 'silver', 'grey', 'gray']
+        if candidate.lower() in known_colors:
+            # Normalize grey/gray to Gray
+            if candidate.lower() in ['grey', 'gray']:
+                return 'Gray'
+            return candidate.capitalize()
+
+    # Fallback: search for known colors anywhere in name
+    name_lower = team_name.lower()
+    known_colors = ['white', 'red', 'blue', 'black', 'gold', 'green',
+                    'orange', 'purple', 'silver', 'grey', 'gray']
+    for color in known_colors:
+        if color in name_lower:
+            # Normalize grey/gray to Gray
+            if color in ['grey', 'gray']:
+                return 'Gray'
+            return color.capitalize()
+
     return ""
 
 
