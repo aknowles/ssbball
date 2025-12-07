@@ -271,14 +271,31 @@ def discover_teams(client_id: str, town_no: str, grade: int, gender: str, season
     return []
 
 
-def parse_team_color(team_name: str) -> str:
+def parse_team_color(team_name: str, team_aliases: dict = None) -> str:
     """Extract color from team name.
 
     Tries parentheses format first like '(White) D2', then falls back to
     searching for known color words anywhere in the name. This ensures
     consistent color extraction across leagues with different team name formats.
+
+    Args:
+        team_name: The team name string to parse
+        team_aliases: Optional dict mapping canonical colors to lists of aliases.
+                      e.g. {"White": ["White 1", "Squirt White"], "Red": ["Red Team"]}
     """
-    # First try parentheses format (most specific)
+    team_aliases = team_aliases or {}
+    name_lower = team_name.lower()
+
+    # First check team_aliases - these take priority for custom naming
+    for canonical_color, aliases in team_aliases.items():
+        if isinstance(aliases, list):
+            for alias in aliases:
+                if alias.lower() in name_lower:
+                    return canonical_color.capitalize()
+        elif isinstance(aliases, str) and aliases.lower() in name_lower:
+            return canonical_color.capitalize()
+
+    # Then try parentheses format (most specific for standard naming)
     match = re.search(r'\((\w+)\)', team_name)
     if match:
         candidate = match.group(1)
@@ -292,7 +309,6 @@ def parse_team_color(team_name: str) -> str:
             return candidate.capitalize()
 
     # Fallback: search for known colors anywhere in name
-    name_lower = team_name.lower()
     known_colors = ['white', 'red', 'blue', 'black', 'gold', 'green',
                     'orange', 'purple', 'silver', 'grey', 'gray']
     for color in known_colors:
@@ -667,8 +683,18 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
     return cal.to_ical()
 
 
-def generate_index_html(calendars: list[dict], base_url: str, town_name: str, include_nl_games: bool = True) -> str:
-    """Generate the landing page HTML with hierarchical sections: Grade -> Color -> Calendars."""
+def generate_index_html(calendars: list[dict], base_url: str, town_name: str, include_nl_games: bool = True, coaches: dict = None) -> str:
+    """Generate the landing page HTML with hierarchical sections: Grade -> Color -> Calendars.
+
+    Args:
+        calendars: List of calendar info dicts
+        base_url: Base URL for calendar links
+        town_name: Town name for display
+        include_nl_games: Whether tournament games are included
+        coaches: Optional dict mapping team keys (e.g. "5-M-White") to coach info
+                 Values can be strings or lists: "Coach Name" or ["Coach Name", "coach@email.com"]
+    """
+    coaches = coaches or {}
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
 
     def extract_grade(cal):
@@ -830,9 +856,26 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
                 # Get gender code for data attribute (M or F)
                 gender_code = 'M' if gender == 'Boys' else 'F'
+
+                # Look up coaches for this team (try multiple key formats)
+                coach_key = f"{grade}-{gender_code}-{color}"
+                coach_info = coaches.get(coach_key) or coaches.get(f"{grade}{gender_code}-{color}") or coaches.get(color)
+                coach_html = ''
+                if coach_info:
+                    if isinstance(coach_info, list):
+                        coach_name = coach_info[0]
+                        coach_email = coach_info[1] if len(coach_info) > 1 else None
+                    else:
+                        coach_name = coach_info
+                        coach_email = None
+                    if coach_email:
+                        coach_html = f'<span class="coach-info">Coach: <a href="mailto:{coach_email}">{coach_name}</a></span>'
+                    else:
+                        coach_html = f'<span class="coach-info">Coach: {coach_name}</span>'
+
                 color_sections.append(f'''
                 <div class="team-group" data-gender="{gender_code}" data-games="{team_games}">
-                    <div class="team-header">{team_label}</div>
+                    <div class="team-header">{team_label}{coach_html}</div>
                     <div class="team-calendars">
                         {cards_html}
                     </div>
@@ -1266,6 +1309,26 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             margin-bottom: var(--spacing-sm);
             padding-bottom: var(--spacing-xs);
             border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--spacing-xs);
+        }}
+
+        .coach-info {{
+            font-weight: 400;
+            font-size: 0.8rem;
+            color: var(--color-text-secondary);
+        }}
+
+        .coach-info a {{
+            color: var(--color-primary);
+            text-decoration: none;
+        }}
+
+        .coach-info a:hover {{
+            text-decoration: underline;
         }}
 
         .team-calendars {{
@@ -2028,6 +2091,7 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
     colors = config.get('colors', ['White'])  # Filter to specific colors, or empty for all
     include_nl_games = config.get('include_nl_games', True)  # Include tournaments/playoffs by default
     jerseys = config.get('jerseys', {})  # Jersey colors for home/away games
+    team_aliases = config.get('team_aliases', {})  # Map canonical colors to aliases
     season = get_season()
 
     # Cache town IDs per league
@@ -2051,7 +2115,7 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
             for gender in genders:
                 teams = discover_teams(league, town_id, grade, gender, season)
                 for team in teams:
-                    color = parse_team_color(team['team_name'])
+                    color = parse_team_color(team['team_name'], team_aliases)
                     # Filter by color if specified
                     if colors and color and color not in colors:
                         logger.info(f"Skipping {team['team_name']} (color {color} not in {colors})")
@@ -2295,7 +2359,8 @@ def main():
         })
 
     # Generate index.html
-    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games)
+    coaches = config.get('coaches', {})
+    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games, coaches=coaches)
     index_path = output_dir / 'index.html'
     index_path.write_text(index_html)
     logger.info(f"Wrote {index_path}")
