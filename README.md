@@ -158,6 +158,44 @@ python scraper.py --config teams.json --output docs
 open docs/index.html
 ```
 
+## Seasonal Transition
+
+At the start of each new season (typically August), coaches move up with their teams to the next grade level. Use the `--bump-coaches` command to automatically update your config:
+
+```bash
+python scraper.py --config teams.json --bump-coaches
+```
+
+This will:
+- Increment each coach's grade by 1 (e.g., `5-M-Red` → `6-M-Red`)
+- Remove coaches who have graduated (at max grade in your config)
+- Print a summary of changes
+
+Example output:
+```
+==================================================
+Coach Grade Bump Complete
+==================================================
+Max grade: 8 (from config)
+Min grade: 3
+
+Bumped (4):
+  4-M-Red → 5-M-Red (Rist)
+  5-M-Red → 6-M-Red (Hurley)
+  5-M-White → 6-M-White (Hynes)
+  6-M-Red → 7-M-Red (Balestracci)
+
+Graduated/Removed (2):
+  8-M-Red (Dunne)
+  8-M-White (Sutphin)
+
+Updated: teams.json
+
+Reminder: You may need to add coaches for incoming 3rd grade teams.
+```
+
+After running, manually add any new coaches for incoming grades or teams with coaching changes.
+
 ## Troubleshooting
 
 **Calendar not updating?**

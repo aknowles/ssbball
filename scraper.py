@@ -2249,12 +2249,116 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
     return team_configs, all_games
 
 
+def bump_coaches(config_path: str) -> None:
+    """Bump coach grades for a new season.
+
+    Increments each coach's grade by 1. Coaches at the max grade (graduated)
+    are removed. This helps with annual season transitions where coaches
+    typically move up with their team.
+
+    Args:
+        config_path: Path to the teams.json config file
+    """
+    with open(config_path) as f:
+        config = json.load(f)
+
+    coaches = config.get('coaches', {})
+    if not coaches:
+        print("No coaches found in config.")
+        return
+
+    grades = config.get('grades', [])
+    if not grades:
+        print("No grades configured - cannot determine max grade.")
+        return
+
+    max_grade = max(grades)
+    min_grade = min(grades)
+
+    new_coaches = {}
+    graduated = []
+    bumped = []
+
+    for key, value in coaches.items():
+        # Parse key format: "grade-gender-color"
+        parts = key.split('-', 2)  # Split into at most 3 parts
+        if len(parts) != 3:
+            print(f"Warning: Skipping invalid coach key format: {key}")
+            new_coaches[key] = value
+            continue
+
+        grade_str, gender, color = parts
+        try:
+            grade = int(grade_str)
+        except ValueError:
+            print(f"Warning: Skipping non-numeric grade: {key}")
+            new_coaches[key] = value
+            continue
+
+        if grade >= max_grade:
+            # Graduated - don't include in new config
+            graduated.append((key, value))
+        else:
+            # Bump grade by 1
+            new_grade = grade + 1
+            new_key = f"{new_grade}-{gender}-{color}"
+            new_coaches[new_key] = value
+            bumped.append((key, new_key, value))
+
+    # Update config
+    config['coaches'] = new_coaches
+
+    # Write back to file
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=2)
+        f.write('\n')
+
+    # Print summary
+    print("\n" + "=" * 50)
+    print("Coach Grade Bump Complete")
+    print("=" * 50)
+    print(f"Max grade: {max_grade} (from config)")
+    print(f"Min grade: {min_grade}")
+    print()
+
+    if bumped:
+        print(f"Bumped ({len(bumped)}):")
+        for old_key, new_key, coach in bumped:
+            coach_name = coach if isinstance(coach, str) else coach[0] if coach else "?"
+            print(f"  {old_key} → {new_key} ({coach_name})")
+
+    if graduated:
+        print(f"\nGraduated/Removed ({len(graduated)}):")
+        for key, coach in graduated:
+            coach_name = coach if isinstance(coach, str) else coach[0] if coach else "?"
+            print(f"  {key} ({coach_name})")
+
+    print(f"\nUpdated: {config_path}")
+    # Format ordinal suffix correctly (1st, 2nd, 3rd, 4th, etc.)
+    if min_grade % 10 == 1 and min_grade != 11:
+        suffix = "st"
+    elif min_grade % 10 == 2 and min_grade != 12:
+        suffix = "nd"
+    elif min_grade % 10 == 3 and min_grade != 13:
+        suffix = "rd"
+    else:
+        suffix = "th"
+    print(f"\nReminder: You may need to add coaches for incoming {min_grade}{suffix} grade teams.")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Basketball Schedule Scraper')
     parser.add_argument('--config', '-c', required=True, help='Config file (JSON)')
     parser.add_argument('--output', '-o', default='docs', help='Output directory for ICS files')
     parser.add_argument('--base-url', '-u', default='', help='Base URL for calendar links')
+    parser.add_argument('--bump-coaches', action='store_true',
+                        help='Bump coach grades for new season (increments grades, removes graduated)')
     args = parser.parse_args()
+
+    # Handle bump-coaches command
+    if args.bump_coaches:
+        bump_coaches(args.config)
+        return
 
     with open(args.config) as f:
         config = json.load(f)
