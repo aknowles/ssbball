@@ -528,6 +528,16 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
             week = item.get('week', '')
             is_tournament = week == 'NL' or game_type == 'Tourn'
 
+            # Extract score info for completed games
+            team_score = item.get('teamscore', '')
+            opponent_score = item.get('opponentscore', '')
+            won_lost = item.get('wonlost', '')
+            # Clean up scores - API returns "--" for unplayed games
+            if team_score == '--':
+                team_score = ''
+            if opponent_score == '--':
+                opponent_score = ''
+
             game = {
                 'datetime': game_dt,
                 'opponent': opponent,
@@ -541,7 +551,10 @@ def parse_schedule_response(data, team_config: dict) -> list[dict]:
                 'gender': team_config.get('gender', ''),
                 'color': color,
                 'is_tournament': is_tournament,
-                'jerseys': team_config.get('jerseys', {})
+                'jerseys': team_config.get('jerseys', {}),
+                'team_score': team_score,
+                'opponent_score': opponent_score,
+                'won_lost': won_lost
             }
             games.append(game)
             logger.info(f"Found game: {game_dt.strftime('%b %d %I:%M%p')} vs {opponent}")
@@ -630,10 +643,18 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
         # Use trophy emoji for tournament/playoff games
         emoji = "🏆" if is_tournament else "🏀"
 
+        # Build score suffix for completed games
+        won_lost = game.get('won_lost', '')
+        team_score = game.get('team_score', '')
+        opponent_score = game.get('opponent_score', '')
+        score_suffix = ''
+        if won_lost and team_score and opponent_score:
+            score_suffix = f" [{won_lost} {team_score}-{opponent_score}]"
+
         if 'away' in game_type or game_type == 'a':
-            event.add('summary', f"{prefix}{emoji} @ {opponent}")
+            event.add('summary', f"{prefix}{emoji} @ {opponent}{score_suffix}")
         else:
-            event.add('summary', f"{prefix}{emoji} vs {opponent}")
+            event.add('summary', f"{prefix}{emoji} vs {opponent}{score_suffix}")
 
         event.add('dtstart', game['datetime'])
         event.add('dtend', game['datetime'] + timedelta(hours=1))
@@ -646,6 +667,10 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
             f"Opponent: {opponent}",
             f"League: {game.get('league', 'Basketball')}"
         ]
+        # Add score for completed games
+        if won_lost and team_score and opponent_score:
+            result_text = "Win" if won_lost == 'W' else "Loss" if won_lost == 'L' else won_lost
+            desc.append(f"Result: {result_text} {team_score}-{opponent_score}")
         if is_tournament:
             desc.append("Type: Tournament/Playoff")
         if game.get('location'):
