@@ -643,18 +643,24 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
         # Use trophy emoji for tournament/playoff games
         emoji = "🏆" if is_tournament else "🏀"
 
-        # Build score suffix for completed games
+        # Build result prefix and score suffix for completed games
         won_lost = game.get('won_lost', '')
         team_score = game.get('team_score', '')
         opponent_score = game.get('opponent_score', '')
+        result_prefix = ''
         score_suffix = ''
         if won_lost and team_score and opponent_score:
-            score_suffix = f" [{won_lost} {team_score}-{opponent_score}]"
+            # W/L emoji at the front, score at the end
+            if won_lost == 'W':
+                result_prefix = '✅ '
+            elif won_lost == 'L':
+                result_prefix = '❌ '
+            score_suffix = f" [{team_score}-{opponent_score}]"
 
         if 'away' in game_type or game_type == 'a':
-            event.add('summary', f"{prefix}{emoji} @ {opponent}{score_suffix}")
+            event.add('summary', f"{prefix}{result_prefix}{emoji} @ {opponent}{score_suffix}")
         else:
-            event.add('summary', f"{prefix}{emoji} vs {opponent}{score_suffix}")
+            event.add('summary', f"{prefix}{result_prefix}{emoji} vs {opponent}{score_suffix}")
 
         event.add('dtstart', game['datetime'])
         event.add('dtend', game['datetime'] + timedelta(hours=1))
