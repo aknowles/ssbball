@@ -691,8 +691,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         base_url: Base URL for calendar links
         town_name: Town name for display
         include_nl_games: Whether tournament games are included
-        coaches: Optional dict mapping team keys (e.g. "5-M-White") to coach info
-                 Values can be strings or lists: "Coach Name" or ["Coach Name", "coach@email.com"]
+        coaches: Optional dict mapping team keys (e.g. "5-M-White") to coach info.
+                 Single coach: "Name" or ["Name", "email@example.com"]
+                 Multiple coaches: [["Name1", "email1"], ["Name2"], ["Name3", "email3"]]
     """
     coaches = coaches or {}
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
@@ -862,16 +863,26 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 coach_info = coaches.get(coach_key) or coaches.get(f"{grade}{gender_code}-{color}") or coaches.get(color)
                 coach_html = ''
                 if coach_info:
-                    if isinstance(coach_info, list):
-                        coach_name = coach_info[0]
-                        coach_email = coach_info[1] if len(coach_info) > 1 else None
+                    def format_coach(c):
+                        """Format a single coach entry."""
+                        if isinstance(c, list):
+                            name = c[0]
+                            email = c[1] if len(c) > 1 else None
+                        else:
+                            name = c
+                            email = None
+                        if email:
+                            return f'<a href="mailto:{email}">{name}</a>'
+                        return name
+
+                    # Check if it's multiple coaches (list of lists) or single coach
+                    if isinstance(coach_info, list) and len(coach_info) > 0 and isinstance(coach_info[0], list):
+                        # Multiple coaches: [["Name1", "email1"], ["Name2", "email2"]]
+                        coach_names = ', '.join(format_coach(c) for c in coach_info)
+                        coach_html = f'<span class="coach-info">Coaches: {coach_names}</span>'
                     else:
-                        coach_name = coach_info
-                        coach_email = None
-                    if coach_email:
-                        coach_html = f'<span class="coach-info">Coach: <a href="mailto:{coach_email}">{coach_name}</a></span>'
-                    else:
-                        coach_html = f'<span class="coach-info">Coach: {coach_name}</span>'
+                        # Single coach: "Name" or ["Name", "email"]
+                        coach_html = f'<span class="coach-info">Coach: {format_coach(coach_info)}</span>'
 
                 color_sections.append(f'''
                 <div class="team-group" data-gender="{gender_code}" data-games="{team_games}">
