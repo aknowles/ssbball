@@ -1953,6 +1953,16 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Why doesn't my team show a coach name?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Coach names are manually configured and we've only added the ones we know about. If you'd like your coach added, please <a href="https://github.com/aknowles/ssbball/issues">submit a GitHub issue</a> with your team (grade, gender, color) and coach name.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 I found a bug or have a suggestion. How do I report it?
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
