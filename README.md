@@ -62,6 +62,44 @@ The Action will run automatically and discover all your town's teams!
 | `colors` | Filter to specific teams (empty = all) | `["White", "Red"]` or `[]` |
 | `include_nl_games` | Include tournaments/playoffs (default: true) | `true` or `false` |
 | `base_url` | Your GitHub Pages URL | `"https://user.github.io/repo"` |
+| `coaches` | Coach names displayed on calendar page | See below |
+| `team_aliases` | Map variant team names to canonical colors | See below |
+
+### Coaches
+
+Display coach names on the calendar page to help parents find their team:
+
+```json
+{
+  "coaches": {
+    "5-M-White": "Coach Smith",
+    "5-M-Red": ["Coach Jones", "jones@email.com"],
+    "8-M-Blue": [["Coach Davis", "davis@email.com"], ["Coach Miller"]]
+  }
+}
+```
+
+Key format: `"grade-gender-color"` (e.g., `"5-M-White"` for 5th grade boys white)
+
+Value formats:
+- `"Name"` — just a name
+- `["Name", "email"]` — name with mailto link
+- `[["Name1", "email1"], ["Name2"]]` — multiple coaches
+
+### Team Aliases
+
+If leagues use different team naming conventions, aliases help match them for combined calendars:
+
+```json
+{
+  "team_aliases": {
+    "White": ["White 1", "Squirt White", "Milton White"],
+    "Red": ["Red Team", "Travel Red"]
+  }
+}
+```
+
+This ensures teams named "Milton White 1" in one league and "Milton (White)" in another are grouped together.
 
 ### Built-in Leagues
 
