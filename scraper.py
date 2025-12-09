@@ -813,7 +813,11 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         if not games:
             return ''
 
-        upcoming = [g for g in games if g['datetime'] > now_dt][:3]
+        # Show whichever is larger: games in next 2 weeks, or next 4 games
+        two_weeks = now_dt + timedelta(days=14)
+        all_upcoming = [g for g in games if g['datetime'] > now_dt]
+        in_two_weeks = [g for g in all_upcoming if g['datetime'] <= two_weeks]
+        upcoming = in_two_weeks if len(in_two_weeks) > 4 else all_upcoming[:4]
         completed = [g for g in games if g['datetime'] <= now_dt and g.get('won_lost')]
         recent = completed[-5:] if completed else []  # Last 5 completed games
         recent.reverse()  # Most recent first
@@ -1156,6 +1160,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
     <meta name="description" content="Subscribe to {town_name} basketball game schedules. Auto-syncing calendars for MetroWest and SSYBL leagues.">
     <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0f0f1a" media="(prefers-color-scheme: dark)">
+    <meta http-equiv="refresh" content="300">
     <title>{town_name} Basketball Calendars</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
