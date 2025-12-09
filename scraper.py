@@ -987,9 +987,6 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 cals_sorted = sorted(cals, key=lambda c: (0 if c.get('type') == 'combined' else 1, c.get('league', '')))
 
                 team_label = f"{gender} {color}"
-                team_games = sum(c.get('games', 0) for c in cals)
-                total_teams += 1
-                total_games += team_games
 
                 cards_html = ''.join(make_card(c, compact=True) for c in cals_sorted)
 
@@ -999,14 +996,24 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 # Generate schedule HTML for this team
                 schedule_html = make_schedule_html(grade, gender_code, color)
 
-                # Get W-L record and division - use combined if available, else sum individuals
+                # Check for combined calendar first
+                combined_cal = next((c for c in cals_sorted if c.get('type') == 'combined'), None)
+
+                # Get game count - use combined if available, else sum individuals
+                if combined_cal:
+                    team_games = combined_cal.get('games', 0)
+                else:
+                    team_games = sum(c.get('games', 0) for c in cals_sorted)
+
+                total_teams += 1
+                total_games += team_games
+
+                # Get W-L record - use combined if available, else sum individuals
                 team_wins = 0
                 team_losses = 0
                 team_ties = 0
                 team_division = ''
 
-                # Check for combined calendar first
-                combined_cal = next((c for c in cals_sorted if c.get('type') == 'combined'), None)
                 if combined_cal:
                     team_wins = combined_cal.get('wins', 0)
                     team_losses = combined_cal.get('losses', 0)
@@ -2636,11 +2643,12 @@ def main():
         team_id = team_config.get('id', 'team')
         team_name = team_config.get('team_name', 'Team')
 
-        # Filter games for this team
+        # Filter games for this team (must match grade, league, gender, AND color)
         team_games = [g for g in all_games
                      if g.get('team_name') == team_name or
                         (g.get('grade') == team_config.get('grade') and
                          g.get('league') == team_config.get('league') and
+                         g.get('gender') == team_config.get('gender') and
                          g.get('color') == team_config.get('color'))]
 
         ical_data = generate_ical(team_games, team_name, team_id)
