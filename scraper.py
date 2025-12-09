@@ -999,6 +999,34 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 # Generate schedule HTML for this team
                 schedule_html = make_schedule_html(grade, gender_code, color)
 
+                # Get combined W-L record and division from calendars (prefer combined, else first with data)
+                team_wins = 0
+                team_losses = 0
+                team_ties = 0
+                team_division = ''
+                for cal in cals_sorted:
+                    w = cal.get('wins', 0)
+                    l = cal.get('losses', 0)
+                    t = cal.get('ties', 0)
+                    div = cal.get('division_tier', '')
+                    if w or l or t:
+                        team_wins += w
+                        team_losses += l
+                        team_ties += t
+                    if div and not team_division:
+                        team_division = div
+
+                # Build header badges
+                header_badges = ''
+                if team_wins or team_losses or team_ties:
+                    if team_ties:
+                        record = f'{team_wins}-{team_losses}-{team_ties}'
+                    else:
+                        record = f'{team_wins}-{team_losses}'
+                    header_badges += f'<span class="team-record">{record}</span>'
+                if team_division:
+                    header_badges += f'<span class="team-division">Div {team_division}</span>'
+
                 # Look up coaches for this team (try multiple key formats)
                 coach_key = f"{grade}-{gender_code}-{color}"
                 coach_info = coaches.get(coach_key) or coaches.get(f"{grade}{gender_code}-{color}") or coaches.get(color)
@@ -1030,14 +1058,15 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     <div class="team-header">
                         <span class="team-arrow">▶</span>
                         <span class="team-name">{team_label}</span>
+                        {header_badges}
                         {coach_html}
                         <span class="team-games">{team_games} games</span>
                     </div>
                     <div class="team-content">
-                        {schedule_html}
                         <div class="team-calendars">
                             {cards_html}
                         </div>
+                        {schedule_html}
                     </div>
                 </div>
                 ''')
@@ -1504,6 +1533,24 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             background: var(--color-bg-subtle);
             padding: 2px 8px;
             border-radius: 12px;
+        }}
+
+        .team-header .team-record {{
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+            background: #059669;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }}
+
+        .team-header .team-division {{
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+            background: var(--color-bg-subtle);
+            padding: 2px 6px;
+            border-radius: 10px;
         }}
 
         .coach-info {{
