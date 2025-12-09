@@ -599,16 +599,47 @@ def fetch_team_games(config: dict, include_nl_games: bool = True) -> list[dict]:
     return games
 
 
+def normalize_opponent(opponent: str) -> str:
+    """Normalize opponent name for deduplication.
+
+    Removes grade/gender indicators (5B, 6G, etc.) and division info (D1, D2, etc.)
+    to match the same game across different leagues.
+
+    Examples:
+        "Stoughton 5B D1" -> "stoughton"
+        "Stoughton D1" -> "stoughton"
+        "Pembroke (Blue) 5B D1" -> "pembroke (blue)"
+    """
+    name = opponent.lower().strip()
+    # Remove grade+gender indicators like "5B", "6G", "5b", "6g" (grade + Boys/Girls)
+    name = re.sub(r'\s+\d+[bgBG]\b', '', name)
+    # Remove division indicators like "D1", "D2", "d1", "d2"
+    name = re.sub(r'\s+d\d+\b', '', name, flags=re.IGNORECASE)
+    # Clean up any double spaces
+    name = re.sub(r'\s+', ' ', name).strip()
+    return name
+
+
 def dedupe_games(games: list[dict]) -> list[dict]:
-    """Remove duplicate games."""
-    seen = set()
-    unique = []
-    for game in games:
-        key = (game['datetime'].isoformat(), game['opponent'].lower(), game.get('grade', ''))
+    """Remove duplicate games, preferring league games over non-league/tournament games.
+
+    Matches games by datetime, normalized opponent name, and grade.
+    When duplicates are found, prefers the league game (is_tournament=False)
+    over the non-league/tournament game.
+    """
+    # Sort so league games come first (is_tournament=False before True)
+    # This ensures league games are kept when duplicates are found
+    sorted_games = sorted(games, key=lambda g: (g.get('is_tournament', False), g['datetime']))
+
+    seen = {}  # key -> game (keep first = league game if available)
+    for game in sorted_games:
+        normalized_opp = normalize_opponent(game['opponent'])
+        key = (game['datetime'].isoformat(), normalized_opp, game.get('grade', ''))
         if key not in seen:
-            seen.add(key)
-            unique.append(game)
-    return unique
+            seen[key] = game
+
+    # Return games in their original order (by datetime)
+    return sorted(seen.values(), key=lambda g: g['datetime'])
 
 
 def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> bytes:
@@ -764,7 +795,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         return 'Boys'
 
     def get_team_games(grade: str, gender_code: str, color: str) -> list:
-        """Get games for a specific team, sorted by date."""
+        """Get games for a specific team, deduplicated and sorted by date."""
         team_games = []
         for game in all_games:
             g_grade = str(game.get('grade', ''))
@@ -772,7 +803,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             g_color = game.get('color', '').lower()
             if g_grade == grade and g_gender == gender_code and g_color == color.lower():
                 team_games.append(game)
-        return sorted(team_games, key=lambda g: g['datetime'])
+        # Deduplicate games (prefers league over non-league for same game)
+        return dedupe_games(team_games)
 
     def make_schedule_html(grade: str, gender_code: str, color: str) -> str:
         """Generate schedule HTML with upcoming games and recent results."""
