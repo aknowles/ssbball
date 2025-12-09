@@ -714,7 +714,7 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
     return cal.to_ical()
 
 
-def generate_index_html(calendars: list[dict], base_url: str, town_name: str, include_nl_games: bool = True, coaches: dict = None) -> str:
+def generate_index_html(calendars: list[dict], base_url: str, town_name: str, include_nl_games: bool = True, coaches: dict = None, all_games: list = None) -> str:
     """Generate the landing page HTML with hierarchical sections: Grade -> Color -> Calendars.
 
     Args:
@@ -725,8 +725,10 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         coaches: Optional dict mapping team keys (e.g. "5-M-White") to coach info.
                  Single coach: "Name" or ["Name", "email@example.com"]
                  Multiple coaches: [["Name1", "email1"], ["Name2"], ["Name3", "email3"]]
+        all_games: Optional list of all game dicts for schedule display
     """
     coaches = coaches or {}
+    all_games = all_games or []
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
 
     def extract_grade(cal):
@@ -760,6 +762,111 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         if 'girls' in cal_id or 'girls' in cal_name:
             return 'Girls'
         return 'Boys'
+
+    def get_team_games(grade: str, gender_code: str, color: str) -> list:
+        """Get games for a specific team, sorted by date."""
+        team_games = []
+        for game in all_games:
+            g_grade = str(game.get('grade', ''))
+            g_gender = game.get('gender', '')
+            g_color = game.get('color', '').lower()
+            if g_grade == grade and g_gender == gender_code and g_color == color.lower():
+                team_games.append(game)
+        return sorted(team_games, key=lambda g: g['datetime'])
+
+    def make_schedule_html(grade: str, gender_code: str, color: str) -> str:
+        """Generate schedule HTML with upcoming games and recent results."""
+        now_dt = datetime.now(EASTERN)
+        games = get_team_games(grade, gender_code, color)
+        if not games:
+            return ''
+
+        upcoming = [g for g in games if g['datetime'] > now_dt][:3]
+        completed = [g for g in games if g['datetime'] <= now_dt and g.get('won_lost')]
+        recent = completed[-5:] if completed else []  # Last 5 completed games
+        recent.reverse()  # Most recent first
+
+        sections = []
+
+        if upcoming:
+            upcoming_items = []
+            for g in upcoming:
+                dt = g['datetime']
+                date_str = dt.strftime('%a %b %d').replace(' 0', ' ')
+                time_str = dt.strftime('%I:%M %p').lstrip('0').lower()
+                opponent = g.get('opponent', 'TBD')
+                game_type = g.get('game_type', '').lower()
+                is_tournament = g.get('is_tournament', False)
+                emoji = '🏆' if is_tournament else ''
+
+                # Location - extract just venue name (before address)
+                location = g.get('location', '')
+                venue = location.split(',')[0] if location else ''
+
+                if 'away' in game_type or game_type == 'a':
+                    matchup = f'@ {opponent}'
+                else:
+                    matchup = f'vs {opponent}'
+
+                upcoming_items.append(f'''
+                    <div class="schedule-game">
+                        <span class="game-date">{date_str}</span>
+                        <span class="game-time">{time_str}</span>
+                        <span class="game-matchup">{emoji} {matchup}</span>
+                        <span class="game-venue">{venue}</span>
+                    </div>
+                ''')
+            sections.append(f'''
+                <div class="schedule-section">
+                    <div class="schedule-title">Upcoming</div>
+                    {''.join(upcoming_items)}
+                </div>
+            ''')
+
+        if recent:
+            recent_items = []
+            for g in recent:
+                dt = g['datetime']
+                date_str = dt.strftime('%b %d').replace(' 0', ' ')
+                opponent = g.get('opponent', 'TBD')
+                game_type = g.get('game_type', '').lower()
+                won_lost = g.get('won_lost', '')
+                team_score = g.get('team_score', '')
+                opp_score = g.get('opponent_score', '')
+                is_tournament = g.get('is_tournament', False)
+                emoji = '🏆' if is_tournament else ''
+
+                result_emoji = '✅' if won_lost == 'W' else '❌' if won_lost == 'L' else '➖'
+                score = f'{team_score}-{opp_score}' if team_score and opp_score else ''
+
+                if 'away' in game_type or game_type == 'a':
+                    matchup = f'@ {opponent}'
+                else:
+                    matchup = f'vs {opponent}'
+
+                recent_items.append(f'''
+                    <div class="schedule-game result">
+                        <span class="game-result">{result_emoji}</span>
+                        <span class="game-date">{date_str}</span>
+                        <span class="game-matchup">{emoji} {matchup}</span>
+                        <span class="game-score">{score}</span>
+                    </div>
+                ''')
+            sections.append(f'''
+                <div class="schedule-section">
+                    <div class="schedule-title">Recent</div>
+                    {''.join(recent_items)}
+                </div>
+            ''')
+
+        if not sections:
+            return ''
+
+        return f'''
+            <div class="team-schedule">
+                {''.join(sections)}
+            </div>
+        '''
 
     # Group all calendars by grade -> gender -> color
     grade_gender_color_groups = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -889,6 +996,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 # Get gender code for data attribute (M or F)
                 gender_code = 'M' if gender == 'Boys' else 'F'
 
+                # Generate schedule HTML for this team
+                schedule_html = make_schedule_html(grade, gender_code, color)
+
                 # Look up coaches for this team (try multiple key formats)
                 coach_key = f"{grade}-{gender_code}-{color}"
                 coach_info = coaches.get(coach_key) or coaches.get(f"{grade}{gender_code}-{color}") or coaches.get(color)
@@ -916,10 +1026,18 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                         coach_html = f'<span class="coach-info">Coach: {format_coach(coach_info)}</span>'
 
                 color_sections.append(f'''
-                <div class="team-group" data-gender="{gender_code}" data-games="{team_games}">
-                    <div class="team-header">{team_label}{coach_html}</div>
-                    <div class="team-calendars">
-                        {cards_html}
+                <div class="team-group" data-gender="{gender_code}" data-games="{team_games}" onclick="toggleTeam(this)">
+                    <div class="team-header">
+                        <span class="team-arrow">▶</span>
+                        <span class="team-name">{team_label}</span>
+                        {coach_html}
+                        <span class="team-games">{team_games} games</span>
+                    </div>
+                    <div class="team-content">
+                        {schedule_html}
+                        <div class="team-calendars">
+                            {cards_html}
+                        </div>
                     </div>
                 </div>
                 ''')
@@ -1335,9 +1453,12 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             padding: var(--spacing-md);
         }}
 
-        /* Team groups */
+        /* Team groups - collapsible */
         .team-group {{
-            margin-bottom: var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
+            background: var(--color-bg-elevated);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
         }}
 
         .team-group:last-child {{
@@ -1345,17 +1466,44 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         }}
 
         .team-header {{
-            font-weight: 700;
+            font-weight: 600;
             font-size: 0.95rem;
             color: var(--color-text);
-            margin-bottom: var(--spacing-sm);
-            padding-bottom: var(--spacing-xs);
-            border-bottom: 1px solid var(--color-border);
+            padding: var(--spacing-md);
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: var(--spacing-xs);
+            gap: var(--spacing-sm);
+            cursor: pointer;
+            transition: background var(--transition-fast);
+            user-select: none;
+        }}
+
+        .team-header:hover {{
+            background: var(--color-bg-subtle);
+        }}
+
+        .team-header .team-arrow {{
+            font-size: 0.7rem;
+            color: var(--color-text-muted);
+            transition: transform var(--transition-normal);
+            flex-shrink: 0;
+        }}
+
+        .team-group.open .team-header .team-arrow {{
+            transform: rotate(90deg);
+        }}
+
+        .team-header .team-name {{
+            flex: 1;
+        }}
+
+        .team-header .team-games {{
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            background: var(--color-bg-subtle);
+            padding: 2px 8px;
+            border-radius: 12px;
         }}
 
         .coach-info {{
@@ -1373,10 +1521,114 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             text-decoration: underline;
         }}
 
+        .team-content {{
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height var(--transition-slow);
+        }}
+
+        .team-group.open .team-content {{
+            max-height: 2000px;
+        }}
+
         .team-calendars {{
             display: flex;
             flex-direction: column;
             gap: var(--spacing-sm);
+            padding: 0 var(--spacing-md) var(--spacing-md);
+        }}
+
+        /* Team schedule display */
+        .team-schedule {{
+            padding: 0 var(--spacing-md) var(--spacing-md);
+            display: flex;
+            gap: var(--spacing-lg);
+            flex-wrap: wrap;
+        }}
+
+        .schedule-section {{
+            flex: 1;
+            min-width: 200px;
+        }}
+
+        .schedule-title {{
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--spacing-sm);
+            padding-bottom: var(--spacing-xs);
+            border-bottom: 1px solid var(--color-border-light);
+        }}
+
+        .schedule-game {{
+            display: grid;
+            grid-template-columns: auto auto 1fr auto;
+            gap: var(--spacing-sm);
+            align-items: center;
+            padding: var(--spacing-xs) 0;
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+        }}
+
+        .schedule-game.result {{
+            grid-template-columns: auto auto 1fr auto;
+        }}
+
+        .schedule-game .game-date {{
+            font-weight: 500;
+            color: var(--color-text);
+            min-width: 60px;
+        }}
+
+        .schedule-game .game-time {{
+            color: var(--color-text-muted);
+            min-width: 65px;
+        }}
+
+        .schedule-game .game-result {{
+            font-size: 1rem;
+        }}
+
+        .schedule-game .game-matchup {{
+            color: var(--color-text);
+        }}
+
+        .schedule-game .game-venue {{
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 150px;
+        }}
+
+        .schedule-game .game-score {{
+            font-weight: 600;
+            color: var(--color-text);
+            min-width: 45px;
+            text-align: right;
+        }}
+
+        @media (max-width: 640px) {{
+            .team-schedule {{
+                flex-direction: column;
+                gap: var(--spacing-md);
+            }}
+
+            .schedule-game {{
+                grid-template-columns: auto 1fr auto;
+            }}
+
+            .schedule-game .game-time {{
+                display: none;
+            }}
+
+            .schedule-game .game-venue {{
+                max-width: 100px;
+            }}
         }}
 
         /* Compact calendar cards */
@@ -1861,7 +2113,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
     <section aria-labelledby="calendars-heading">
         <h2 id="calendars-heading">Team Calendars</h2>
-        <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-md);">Click a grade to expand. ⭐ Combined calendars include all leagues.</p>
+        <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-md);">Click a grade, then a team to see schedule and calendar links. ⭐ Combined calendars include all leagues.</p>
 
         <div class="filter-bar" role="group" aria-label="Filter teams">
             <span class="filter-label">Show:</span>
@@ -2022,6 +2274,12 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             btn.classList.toggle('active');
             const content = btn.nextElementSibling;
             content.classList.toggle('open');
+        }}
+
+        function toggleTeam(el) {{
+            // Prevent toggle when clicking on links or buttons inside
+            if (event.target.closest('a, button')) return;
+            el.classList.toggle('open');
         }}
 
         function toggleFaq(el) {{
@@ -2412,7 +2670,7 @@ def main():
 
     # Generate index.html
     coaches = config.get('coaches', {})
-    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games, coaches=coaches)
+    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games, coaches=coaches, all_games=all_games)
     index_path = output_dir / 'index.html'
     index_path.write_text(index_html)
     logger.info(f"Wrote {index_path}")
