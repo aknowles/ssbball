@@ -2643,11 +2643,12 @@ def main():
         team_id = team_config.get('id', 'team')
         team_name = team_config.get('team_name', 'Team')
 
-        # Filter games for this team
+        # Filter games for this team (must match grade, league, gender, AND color)
         team_games = [g for g in all_games
                      if g.get('team_name') == team_name or
                         (g.get('grade') == team_config.get('grade') and
                          g.get('league') == team_config.get('league') and
+                         g.get('gender') == team_config.get('gender') and
                          g.get('color') == team_config.get('color'))]
 
         ical_data = generate_ical(team_games, team_name, team_id)
