@@ -1559,6 +1559,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             background: #059669;
             padding: 2px 8px;
             border-radius: 12px;
+            white-space: nowrap;
         }}
 
         .team-header .team-division {{
@@ -1568,6 +1569,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             background: var(--color-bg-subtle);
             padding: 2px 6px;
             border-radius: 10px;
+            white-space: nowrap;
         }}
 
         .coach-info {{
