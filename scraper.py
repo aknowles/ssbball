@@ -999,22 +999,31 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 # Generate schedule HTML for this team
                 schedule_html = make_schedule_html(grade, gender_code, color)
 
-                # Get combined W-L record and division from calendars (prefer combined, else first with data)
+                # Get W-L record and division - use combined if available, else sum individuals
                 team_wins = 0
                 team_losses = 0
                 team_ties = 0
                 team_division = ''
+
+                # Check for combined calendar first
+                combined_cal = next((c for c in cals_sorted if c.get('type') == 'combined'), None)
+                if combined_cal:
+                    team_wins = combined_cal.get('wins', 0)
+                    team_losses = combined_cal.get('losses', 0)
+                    team_ties = combined_cal.get('ties', 0)
+                else:
+                    # No combined - sum individual league records
+                    for cal in cals_sorted:
+                        team_wins += cal.get('wins', 0)
+                        team_losses += cal.get('losses', 0)
+                        team_ties += cal.get('ties', 0)
+
+                # Get division from first calendar that has one
                 for cal in cals_sorted:
-                    w = cal.get('wins', 0)
-                    l = cal.get('losses', 0)
-                    t = cal.get('ties', 0)
                     div = cal.get('division_tier', '')
-                    if w or l or t:
-                        team_wins += w
-                        team_losses += l
-                        team_ties += t
-                    if div and not team_division:
+                    if div:
                         team_division = div
+                        break
 
                 # Build header badges
                 header_badges = ''
