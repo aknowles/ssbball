@@ -1018,12 +1018,13 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                         team_losses += cal.get('losses', 0)
                         team_ties += cal.get('ties', 0)
 
-                # Get division from first calendar that has one
-                for cal in cals_sorted:
-                    div = cal.get('division_tier', '')
-                    if div:
-                        team_division = div
-                        break
+                # Get division - use combined's division if combined exists, else use single calendar's
+                if combined_cal:
+                    # Combined exists - use its division (empty if teams in different divisions)
+                    team_division = combined_cal.get('division_tier', '')
+                elif len(cals_sorted) == 1:
+                    # Single calendar - use its division
+                    team_division = cals_sorted[0].get('division_tier', '')
 
                 # Build header badges
                 header_badges = ''
