@@ -1065,21 +1065,14 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     # Single calendar - use its division
                     team_division = cals_sorted[0].get('division_tier', '')
 
-                # Build header badges
-                header_badges = ''
-                if team_wins or team_losses or team_ties:
-                    if team_ties:
-                        record = f'{team_wins}-{team_losses}-{team_ties}'
-                    else:
-                        record = f'{team_wins}-{team_losses}'
-                    header_badges += f'<span class="team-record">{record}</span>'
+                # Build left side info (division, coach)
+                left_info = ''
                 if team_division:
-                    header_badges += f'<span class="team-division">Div {team_division}</span>'
+                    left_info += f'<span class="team-division">Div {team_division}</span>'
 
                 # Look up coaches for this team (try multiple key formats)
                 coach_key = f"{grade}-{gender_code}-{color}"
                 coach_info = coaches.get(coach_key) or coaches.get(f"{grade}{gender_code}-{color}") or coaches.get(color)
-                coach_html = ''
                 if coach_info:
                     def format_coach(c):
                         """Format a single coach entry."""
@@ -1097,19 +1090,32 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     if isinstance(coach_info, list) and len(coach_info) > 0 and isinstance(coach_info[0], list):
                         # Multiple coaches: [["Name1", "email1"], ["Name2", "email2"]]
                         coach_names = ', '.join(format_coach(c) for c in coach_info)
-                        coach_html = f'<span class="coach-info">Coaches: {coach_names}</span>'
+                        left_info += f'<span class="coach-info">Coaches: {coach_names}</span>'
                     else:
                         # Single coach: "Name" or ["Name", "email"]
-                        coach_html = f'<span class="coach-info">Coach: {format_coach(coach_info)}</span>'
+                        left_info += f'<span class="coach-info">Coach: {format_coach(coach_info)}</span>'
+
+                # Build right side info (record, games)
+                right_info = ''
+                if team_wins or team_losses or team_ties:
+                    if team_ties:
+                        record = f'{team_wins}-{team_losses}-{team_ties}'
+                    else:
+                        record = f'{team_wins}-{team_losses}'
+                    right_info += f'<span class="team-record">{record}</span>'
+                right_info += f'<span class="team-games">{team_games} games</span>'
 
                 color_sections.append(f'''
                 <div class="team-group" data-gender="{gender_code}" data-games="{team_games}" onclick="toggleTeam(this)">
                     <div class="team-header">
-                        <span class="team-arrow">▶</span>
-                        <span class="team-name">{team_label}</span>
-                        {header_badges}
-                        {coach_html}
-                        <span class="team-games">{team_games} games</span>
+                        <div class="team-info-left">
+                            <span class="team-arrow">▶</span>
+                            <span class="team-name">{team_label}</span>
+                            {left_info}
+                        </div>
+                        <div class="team-info-right">
+                            {right_info}
+                        </div>
                     </div>
                     <div class="team-content">
                         <div class="team-calendars">
@@ -1550,6 +1556,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             padding: var(--spacing-md);
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: var(--spacing-sm);
             cursor: pointer;
             transition: background var(--transition-fast);
@@ -1558,6 +1565,20 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         .team-header:hover {{
             background: var(--color-bg-subtle);
+        }}
+
+        .team-info-left {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            min-width: 0;
+        }}
+
+        .team-info-right {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex-shrink: 0;
         }}
 
         .team-header .team-arrow {{
@@ -1569,10 +1590,6 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         .team-group.open .team-header .team-arrow {{
             transform: rotate(90deg);
-        }}
-
-        .team-header .team-name {{
-            flex: 1;
         }}
 
         .team-header .team-games {{
