@@ -1008,6 +1008,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         color_sections = []
         total_teams = 0
         total_games = 0
+        total_wins = 0
+        total_losses = 0
+        total_ties = 0
 
         for gender in ['Boys', 'Girls']:
             if gender not in gender_groups:
@@ -1061,6 +1064,11 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                         team_losses += cal.get('losses', 0)
                         team_ties += cal.get('ties', 0)
 
+                # Add to grade-level totals
+                total_wins += team_wins
+                total_losses += team_losses
+                total_ties += team_ties
+
                 # Get division - use combined's division if combined exists, else use single calendar's
                 if combined_cal:
                     # Combined exists - use its division (empty if teams in different divisions)
@@ -1110,7 +1118,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 right_info += f'<span class="team-games">{team_games} games</span>'
 
                 color_sections.append(f'''
-                <div class="team-group" data-gender="{gender_code}" data-games="{team_games}" onclick="toggleTeam(this)">
+                <div class="team-group" data-gender="{gender_code}" data-games="{team_games}" data-wins="{team_wins}" data-losses="{team_losses}" data-ties="{team_ties}" onclick="toggleTeam(this)">
                     <div class="team-header">
                         <div class="team-info-left">
                             <span class="team-arrow">▶</span>
@@ -1131,11 +1139,21 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 ''')
 
         if color_sections:
+            # Format aggregate W-L for grade header
+            if total_wins or total_losses or total_ties:
+                if total_ties:
+                    grade_record = f'{total_wins}-{total_losses}-{total_ties}'
+                else:
+                    grade_record = f'{total_wins}-{total_losses}'
+                record_html = f' &bull; <span class="grade-record">{grade_record}</span>'
+            else:
+                record_html = ''
+
             grade_sections.append(f'''
-            <div class="grade-section">
+            <div class="grade-section" data-total-wins="{total_wins}" data-total-losses="{total_losses}" data-total-ties="{total_ties}">
                 <button class="collapsible" onclick="toggleSection(this)">
                     <span class="grade-title">🏀 {grade_label}</span>
-                    <span class="grade-info">{total_teams} teams &bull; {total_games} games</span>
+                    <span class="grade-info">{total_teams} teams{record_html} &bull; {total_games} games</span>
                     <span class="arrow">▼</span>
                 </button>
                 <div class="collapsible-content">
@@ -2430,17 +2448,30 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 const groups = section.querySelectorAll('.team-group');
                 let visibleTeams = 0;
                 let visibleGames = 0;
+                let visibleWins = 0;
+                let visibleLosses = 0;
+                let visibleTies = 0;
 
                 groups.forEach(group => {{
                     if (!group.classList.contains('hidden')) {{
                         visibleTeams++;
                         visibleGames += parseInt(group.dataset.games || 0, 10);
+                        visibleWins += parseInt(group.dataset.wins || 0, 10);
+                        visibleLosses += parseInt(group.dataset.losses || 0, 10);
+                        visibleTies += parseInt(group.dataset.ties || 0, 10);
                     }}
                 }});
 
+                // Format W-L record
+                let recordHtml = '';
+                if (visibleWins || visibleLosses || visibleTies) {{
+                    const record = visibleTies ? `${{visibleWins}}-${{visibleLosses}}-${{visibleTies}}` : `${{visibleWins}}-${{visibleLosses}}`;
+                    recordHtml = ` • <span class="grade-record">${{record}}</span>`;
+                }}
+
                 const infoEl = section.querySelector('.grade-info');
                 if (infoEl) {{
-                    infoEl.textContent = `${{visibleTeams}} team${{visibleTeams !== 1 ? 's' : ''}} • ${{visibleGames}} games`;
+                    infoEl.innerHTML = `${{visibleTeams}} team${{visibleTeams !== 1 ? 's' : ''}}${{recordHtml}} • ${{visibleGames}} games`;
                 }}
             }});
 
