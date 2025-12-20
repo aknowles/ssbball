@@ -164,7 +164,7 @@ Coaches can request practice changes using issue templates:
 - **[Modify a Practice](../../issues/new?template=modify-practice.yml)** — Change time, location, or duration
 - **[Add a Practice](../../issues/new?template=add-practice.yml)** — Schedule an extra one-time practice
 
-When submitted, a workflow automatically updates `teams.json` and regenerates calendars.
+**Approval required:** After submitting, a maintainer must add the `approved` label. Once approved, the workflow automatically updates `teams.json` and regenerates calendars.
 
 ### Built-in Leagues
 
