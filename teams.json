@@ -29,14 +29,15 @@
           "day": "Tuesday",
           "time": "18:00",
           "duration": 60,
-          "location": "Cunningham Park Gym, 75 Edge Hill Rd, Milton MA",
-          "notes": "Bring water bottle"
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Park Gym"
         },
         {
           "day": "Thursday",
           "time": "18:00",
           "duration": 60,
-          "location": "Cunningham Park Gym, 75 Edge Hill Rd, Milton MA"
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Park Gym"
         }
       ],
       "adhoc": [],
