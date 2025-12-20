@@ -63,6 +63,26 @@
       "adhoc": [],
       "modifications": []
     },
+    "6-M-Red": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Wednesday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
     "8-M-White": {
       "recurring": [
         {
