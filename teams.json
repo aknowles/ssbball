@@ -19,8 +19,8 @@
     "8-M-White": "Sutphin"
   },
   "season": {
-    "start": "2024-11-01",
-    "end": "2025-03-15"
+    "start": "2026-01-01",
+    "end": "2026-03-31"
   },
   "practices": {
     "5-M-Red": {
@@ -37,6 +37,24 @@
           "time": "18:00",
           "duration": 60,
           "location": "Cunningham Park Gym, 75 Edge Hill Rd, Milton MA"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "5-M-White": {
+      "recurring": [
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "Collicot Elementary School, Edge Hill Rd, Milton MA"
+        },
+        {
+          "day": "Tuesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "Milton Academy ACC Gym, Milton MA"
         }
       ],
       "adhoc": [],
