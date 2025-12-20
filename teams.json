@@ -59,6 +59,24 @@
       ],
       "adhoc": [],
       "modifications": []
+    },
+    "8-M-White": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "Milton Academy ACC Gym, Milton MA"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "Milton Academy ACC Gym, Milton MA"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
     }
   }
 }
