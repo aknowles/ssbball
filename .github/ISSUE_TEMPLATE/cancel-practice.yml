@@ -1,0 +1,34 @@
+name: Cancel Practice
+description: Cancel a scheduled practice for a specific date
+title: "[Practice Cancel] "
+labels: ["practice-change", "cancel"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to cancel a practice for a specific date. The practice will be removed from the calendar.
+
+  - type: input
+    id: team
+    attributes:
+      label: Team
+      description: "Team identifier (e.g., 5-M-Red for 5th Grade Boys Red)"
+      placeholder: "5-M-Red"
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: Practice Date
+      description: "Date of the practice to cancel (YYYY-MM-DD format)"
+      placeholder: "2025-01-15"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: Reason (optional)
+      description: "Why is this practice being cancelled?"
+      placeholder: "Holiday, gym unavailable, etc."

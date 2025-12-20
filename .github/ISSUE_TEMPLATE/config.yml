@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a Bug
+    url: https://github.com/aknowles/ssbball/issues/new
+    about: Report issues with the calendar or website

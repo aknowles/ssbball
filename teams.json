@@ -17,5 +17,30 @@
     "6-M-Red": "Balestracci",
     "8-M-Red": "Dunne",
     "8-M-White": "Sutphin"
+  },
+  "season": {
+    "start": "2024-11-01",
+    "end": "2025-03-15"
+  },
+  "practices": {
+    "5-M-Red": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:00",
+          "duration": 60,
+          "location": "Cunningham Park Gym, 75 Edge Hill Rd, Milton MA",
+          "notes": "Bring water bottle"
+        },
+        {
+          "day": "Thursday",
+          "time": "18:00",
+          "duration": 60,
+          "location": "Cunningham Park Gym, 75 Edge Hill Rd, Milton MA"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    }
   }
 }
