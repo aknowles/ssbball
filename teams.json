@@ -48,13 +48,15 @@
           "day": "Saturday",
           "time": "09:30",
           "duration": 90,
-          "location": "Collicot Elementary School, Edge Hill Rd, Milton MA"
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
         },
         {
           "day": "Tuesday",
           "time": "18:15",
           "duration": 90,
-          "location": "Milton Academy ACC Gym, Milton MA"
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
         }
       ],
       "adhoc": [],
@@ -66,13 +68,15 @@
           "day": "Wednesday",
           "time": "19:45",
           "duration": 90,
-          "location": "Milton Academy ACC Gym, Milton MA"
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
         },
         {
           "day": "Thursday",
           "time": "19:45",
           "duration": 90,
-          "location": "Milton Academy ACC Gym, Milton MA"
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
         }
       ],
       "adhoc": [],
