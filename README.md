@@ -64,6 +64,8 @@ The Action will run automatically and discover all your town's teams!
 | `base_url` | Your GitHub Pages URL | `"https://user.github.io/repo"` |
 | `coaches` | Coach names displayed on calendar page | See below |
 | `team_aliases` | Map variant team names to canonical colors | See below |
+| `season` | Season start/end dates for practices | See below |
+| `practices` | Recurring practice schedules per team | See below |
 
 ### Coaches
 
@@ -100,6 +102,69 @@ If leagues use different team naming conventions, aliases help match them for co
 ```
 
 This ensures teams named "Milton White 1" in one league and "Milton (White)" in another are grouped together.
+
+### Practice Schedules
+
+Add recurring practice schedules that appear in team calendars alongside games:
+
+```json
+{
+  "season": {
+    "start": "2026-01-01",
+    "end": "2026-03-31"
+  },
+  "practices": {
+    "5-M-White": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "Milton Academy ACC Gym, Milton MA",
+          "notes": "Bring water bottle"
+        },
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "Collicot Elementary School, Edge Hill Rd, Milton MA"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    }
+  }
+}
+```
+
+**Fields:**
+- `season.start` / `season.end` — Date range for generating practices (YYYY-MM-DD)
+- `recurring` — Weekly practices with day, time (24h), duration (minutes), location, and optional notes
+- `adhoc` — One-off practices: `{"date": "2026-02-15", "time": "10:00", "duration": 60, "location": "..."}`
+- `modifications` — Cancel or change specific dates (see below)
+
+**Modifying specific practices:**
+
+```json
+{
+  "modifications": [
+    {"date": "2026-01-14", "action": "cancel"},
+    {"date": "2026-01-21", "action": "modify", "time": "19:00", "location": "New Gym"}
+  ]
+}
+```
+
+Practices are automatically skipped when they conflict with scheduled games (within 1 hour).
+
+#### Request Practice Changes via GitHub Issues
+
+Coaches can request practice changes using issue templates:
+
+- **[Cancel a Practice](../../issues/new?template=cancel-practice.yml)** — Remove a practice for a specific date
+- **[Modify a Practice](../../issues/new?template=modify-practice.yml)** — Change time, location, or duration
+- **[Add a Practice](../../issues/new?template=add-practice.yml)** — Schedule an extra one-time practice
+
+When submitted, a workflow automatically updates `teams.json` and regenerates calendars.
 
 ### Built-in Leagues
 
@@ -188,7 +253,9 @@ open docs/index.html
 |------|---------|
 | `teams.json` | Town configuration (edit this!) |
 | `scraper.py` | Main scraper script |
-| `.github/workflows/update-calendars.yml` | GitHub Actions workflow |
+| `.github/workflows/update-calendars.yml` | Hourly calendar update workflow |
+| `.github/workflows/process-practice-changes.yml` | Processes practice change issues |
+| `.github/ISSUE_TEMPLATE/` | Issue templates for practice changes |
 | `docs/` | Generated output (GitHub Pages) |
 
 ## Issues & Feedback
