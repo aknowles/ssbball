@@ -1,0 +1,60 @@
+name: Add Practice
+description: Add an extra practice session (one-time)
+title: "[Practice Add] "
+labels: ["practice-change", "add"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to add a one-time practice that's not part of the regular schedule.
+
+  - type: input
+    id: team
+    attributes:
+      label: Team
+      description: "Team identifier (e.g., 5-M-Red for 5th Grade Boys Red)"
+      placeholder: "5-M-Red"
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: Practice Date
+      description: "Date of the practice (YYYY-MM-DD format)"
+      placeholder: "2025-01-15"
+    validations:
+      required: true
+
+  - type: input
+    id: time
+    attributes:
+      label: Start Time
+      description: "Start time in 24-hour format (HH:MM)"
+      placeholder: "18:00"
+    validations:
+      required: true
+
+  - type: input
+    id: duration
+    attributes:
+      label: Duration
+      description: "Duration in minutes"
+      placeholder: "60"
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: "Practice location with address"
+      placeholder: "Cunningham Park Gym, 75 Edge Hill Rd, Milton MA"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: "Any additional notes about this practice"

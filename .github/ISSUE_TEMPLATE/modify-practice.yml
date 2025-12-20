@@ -1,0 +1,54 @@
+name: Modify Practice
+description: Change the time, location, or duration of a scheduled practice
+title: "[Practice Modify] "
+labels: ["practice-change", "modify"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to modify an existing practice. Only fill in the fields you want to change.
+
+  - type: input
+    id: team
+    attributes:
+      label: Team
+      description: "Team identifier (e.g., 5-M-Red for 5th Grade Boys Red)"
+      placeholder: "5-M-Red"
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: Practice Date
+      description: "Date of the practice to modify (YYYY-MM-DD format)"
+      placeholder: "2025-01-15"
+    validations:
+      required: true
+
+  - type: input
+    id: new_time
+    attributes:
+      label: New Time (optional)
+      description: "New start time in 24-hour format (HH:MM)"
+      placeholder: "18:30"
+
+  - type: input
+    id: new_duration
+    attributes:
+      label: New Duration (optional)
+      description: "New duration in minutes"
+      placeholder: "90"
+
+  - type: input
+    id: new_location
+    attributes:
+      label: New Location (optional)
+      description: "New practice location"
+      placeholder: "Milton High School Gym, 25 Gile Rd, Milton MA"
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: "Any additional notes about this change"

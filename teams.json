@@ -17,5 +17,66 @@
     "6-M-Red": "Balestracci",
     "8-M-Red": "Dunne",
     "8-M-White": "Sutphin"
+  },
+  "season": {
+    "start": "2026-01-01",
+    "end": "2026-03-31"
+  },
+  "practices": {
+    "5-M-Red": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:00",
+          "duration": 60,
+          "location": "Cunningham Park Gym, 75 Edge Hill Rd, Milton MA",
+          "notes": "Bring water bottle"
+        },
+        {
+          "day": "Thursday",
+          "time": "18:00",
+          "duration": 60,
+          "location": "Cunningham Park Gym, 75 Edge Hill Rd, Milton MA"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "5-M-White": {
+      "recurring": [
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "Collicot Elementary School, Edge Hill Rd, Milton MA"
+        },
+        {
+          "day": "Tuesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "Milton Academy ACC Gym, Milton MA"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-M-White": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "Milton Academy ACC Gym, Milton MA"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "Milton Academy ACC Gym, Milton MA"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    }
   }
 }

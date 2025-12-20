@@ -90,6 +90,231 @@ def get_season() -> str:
     return str(now.year)
 
 
+# Day name to weekday number mapping
+DAY_TO_WEEKDAY = {
+    'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+    'friday': 4, 'saturday': 5, 'sunday': 6
+}
+
+
+def parse_season_dates(config: dict) -> tuple[Optional[datetime], Optional[datetime]]:
+    """Parse season start and end dates from config.
+
+    Returns:
+        Tuple of (start_date, end_date) as timezone-aware datetimes, or (None, None) if not configured.
+    """
+    season = config.get('season', {})
+    if not season:
+        return None, None
+
+    start_str = season.get('start')
+    end_str = season.get('end')
+
+    start_date = None
+    end_date = None
+
+    if start_str:
+        try:
+            start_date = datetime.strptime(start_str, '%Y-%m-%d').replace(tzinfo=EASTERN)
+        except ValueError:
+            logger.warning(f"Invalid season start date format: {start_str}")
+
+    if end_str:
+        try:
+            # End date should include the entire day
+            end_date = datetime.strptime(end_str, '%Y-%m-%d').replace(
+                hour=23, minute=59, second=59, tzinfo=EASTERN
+            )
+        except ValueError:
+            logger.warning(f"Invalid season end date format: {end_str}")
+
+    return start_date, end_date
+
+
+def generate_practice_events(config: dict, team_key: str, team_name: str, short_name: str, team_games: list = None) -> list[dict]:
+    """Generate practice events for a team based on recurring schedules and modifications.
+
+    Args:
+        config: Full config dict containing season and practices
+        team_key: Team key like "5-M-Red"
+        team_name: Full team name for display
+        short_name: Short name like "5B-Red"
+        team_games: Optional list of game events for this team (used to skip conflicting practices)
+
+    Returns:
+        List of practice event dicts compatible with generate_ical
+    """
+    practices_config = config.get('practices', {})
+    team_practices = practices_config.get(team_key, {})
+    team_games = team_games or []
+
+    # Build a set of game datetimes for conflict checking
+    # A practice conflicts if it's within 1 hour of a game
+    def conflicts_with_game(practice_dt: datetime, duration: int) -> bool:
+        """Check if a practice conflicts with any game (overlaps or within 1 hour)."""
+        practice_end = practice_dt + timedelta(minutes=duration)
+        buffer = timedelta(hours=1)
+
+        for game in team_games:
+            game_dt = game.get('datetime')
+            if not game_dt:
+                continue
+            game_end = game_dt + timedelta(hours=1)  # Assume 1 hour game duration
+
+            # Check if practice is within 1 hour before or after game
+            # Practice conflicts if:
+            # - practice starts within 1 hour before game ends, OR
+            # - practice ends within 1 hour after game starts
+            if (practice_dt < game_end + buffer) and (practice_end > game_dt - buffer):
+                return True
+        return False
+
+    if not team_practices:
+        return []
+
+    season_start, season_end = parse_season_dates(config)
+    if not season_start or not season_end:
+        logger.warning(f"No season dates configured, skipping practices for {team_key}")
+        return []
+
+    events = []
+    recurring = team_practices.get('recurring', [])
+    adhoc = team_practices.get('adhoc', [])
+    modifications = team_practices.get('modifications', [])
+
+    # Build a lookup for modifications by date
+    mod_by_date = {}
+    for mod in modifications:
+        mod_date = mod.get('date')
+        if mod_date:
+            mod_by_date[mod_date] = mod
+
+    # Generate recurring practice events
+    for schedule in recurring:
+        day_name = schedule.get('day', '').lower()
+        time_str = schedule.get('time', '18:00')
+        duration = schedule.get('duration', 60)  # minutes
+        location = schedule.get('location', '')
+        notes = schedule.get('notes', '')
+
+        if day_name not in DAY_TO_WEEKDAY:
+            logger.warning(f"Invalid day name: {schedule.get('day')}")
+            continue
+
+        target_weekday = DAY_TO_WEEKDAY[day_name]
+
+        # Parse time
+        try:
+            hour, minute = map(int, time_str.split(':'))
+        except ValueError:
+            logger.warning(f"Invalid time format: {time_str}")
+            continue
+
+        # Find first occurrence of this weekday on or after season start
+        current = season_start
+        days_until_target = (target_weekday - current.weekday()) % 7
+        current = current + timedelta(days=days_until_target)
+        current = current.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+        # Generate events for each week
+        while current <= season_end:
+            date_str = current.strftime('%Y-%m-%d')
+
+            # Check for modifications on this date
+            if date_str in mod_by_date:
+                mod = mod_by_date[date_str]
+                if mod.get('action') == 'cancel':
+                    # Skip this practice
+                    current += timedelta(weeks=1)
+                    continue
+                elif mod.get('action') == 'modify':
+                    # Apply modifications
+                    if mod.get('time'):
+                        try:
+                            mod_hour, mod_minute = map(int, mod['time'].split(':'))
+                            current = current.replace(hour=mod_hour, minute=mod_minute)
+                        except ValueError:
+                            pass
+                    if mod.get('duration'):
+                        duration = mod['duration']
+                    if mod.get('location'):
+                        location = mod['location']
+                    if mod.get('notes'):
+                        notes = mod['notes']
+
+            # Check for game conflicts before creating practice
+            if conflicts_with_game(current, duration):
+                logger.info(f"Skipping practice on {current.date()} for {team_key} - conflicts with game")
+                current += timedelta(weeks=1)
+                continue
+
+            # Create practice event
+            event = {
+                'datetime': current,
+                'opponent': '',  # No opponent for practice
+                'location': location,
+                'team_name': team_name,
+                'short_name': short_name,
+                'game_type': 'practice',
+                'league': 'Practice',
+                'is_practice': True,
+                'duration': duration,
+                'notes': notes,
+                'grade': team_key.split('-')[0] if '-' in team_key else '',
+                'gender': team_key.split('-')[1] if '-' in team_key and len(team_key.split('-')) > 1 else '',
+                'color': team_key.split('-')[2] if '-' in team_key and len(team_key.split('-')) > 2 else ''
+            }
+            events.append(event)
+
+            current += timedelta(weeks=1)
+
+    # Add ad-hoc practices
+    for adhoc_practice in adhoc:
+        date_str = adhoc_practice.get('date')
+        time_str = adhoc_practice.get('time', '18:00')
+        duration = adhoc_practice.get('duration', 60)
+        location = adhoc_practice.get('location', '')
+        notes = adhoc_practice.get('notes', '')
+
+        if not date_str:
+            continue
+
+        try:
+            hour, minute = map(int, time_str.split(':'))
+            practice_dt = datetime.strptime(date_str, '%Y-%m-%d').replace(
+                hour=hour, minute=minute, tzinfo=EASTERN
+            )
+        except ValueError:
+            logger.warning(f"Invalid adhoc practice date/time: {date_str} {time_str}")
+            continue
+
+        # Check if within season and no game conflict
+        if season_start <= practice_dt <= season_end:
+            if conflicts_with_game(practice_dt, duration):
+                logger.info(f"Skipping adhoc practice on {practice_dt.date()} for {team_key} - conflicts with game")
+                continue
+
+            event = {
+                'datetime': practice_dt,
+                'opponent': '',
+                'location': location,
+                'team_name': team_name,
+                'short_name': short_name,
+                'game_type': 'practice',
+                'league': 'Practice',
+                'is_practice': True,
+                'duration': duration,
+                'notes': notes,
+                'grade': team_key.split('-')[0] if '-' in team_key else '',
+                'gender': team_key.split('-')[1] if '-' in team_key and len(team_key.split('-')) > 1 else '',
+                'color': team_key.split('-')[2] if '-' in team_key and len(team_key.split('-')) > 2 else ''
+            }
+            events.append(event)
+
+    logger.info(f"Generated {len(events)} practice events for {team_key}")
+    return events
+
+
 def fetch_url(url: str, headers: dict = None) -> str:
     """Fetch a URL and return content."""
     default_headers = {
@@ -643,7 +868,7 @@ def dedupe_games(games: list[dict]) -> list[dict]:
 
 
 def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> bytes:
-    """Generate iCalendar content."""
+    """Generate iCalendar content for games and practices."""
     cal = Calendar()
     cal.add('prodid', f'-//Basketball Schedule//{calendar_id}//EN')
     cal.add('version', '2.0')
@@ -654,6 +879,8 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
 
     for game in sorted(games, key=lambda g: g['datetime']):
         event = Event()
+
+        is_practice = game.get('is_practice', False)
 
         uid = hashlib.md5(
             f"{game['datetime'].isoformat()}-{game['opponent']}-{game.get('grade', '')}-{game.get('league', '')}".encode()
@@ -671,73 +898,102 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
         else:
             prefix = ""
 
-        # Use trophy emoji for tournament/playoff games
-        emoji = "🏆" if is_tournament else "🏀"
-
-        # Build result prefix and score suffix for completed games
-        won_lost = game.get('won_lost', '')
-        team_score = game.get('team_score', '')
-        opponent_score = game.get('opponent_score', '')
-        result_prefix = ''
-        score_suffix = ''
-        if won_lost and team_score and opponent_score:
-            # W/L emoji at the front, score at the end
-            if won_lost == 'W':
-                result_prefix = '✅ '
-            elif won_lost == 'L':
-                result_prefix = '❌ '
-            score_suffix = f" [{team_score}-{opponent_score}]"
-
-        if 'away' in game_type or game_type == 'a':
-            event.add('summary', f"{prefix}{result_prefix}{emoji} @ {opponent}{score_suffix}")
+        if is_practice:
+            # Practice event formatting
+            event.add('summary', f"{prefix}🏋️ Practice")
         else:
-            event.add('summary', f"{prefix}{result_prefix}{emoji} vs {opponent}{score_suffix}")
+            # Game event formatting
+            # Use trophy emoji for tournament/playoff games
+            emoji = "🏆" if is_tournament else "🏀"
+
+            # Build result prefix and score suffix for completed games
+            won_lost = game.get('won_lost', '')
+            team_score = game.get('team_score', '')
+            opponent_score = game.get('opponent_score', '')
+            result_prefix = ''
+            score_suffix = ''
+            if won_lost and team_score and opponent_score:
+                # W/L emoji at the front, score at the end
+                if won_lost == 'W':
+                    result_prefix = '✅ '
+                elif won_lost == 'L':
+                    result_prefix = '❌ '
+                score_suffix = f" [{team_score}-{opponent_score}]"
+
+            if 'away' in game_type or game_type == 'a':
+                event.add('summary', f"{prefix}{result_prefix}{emoji} @ {opponent}{score_suffix}")
+            else:
+                event.add('summary', f"{prefix}{result_prefix}{emoji} vs {opponent}{score_suffix}")
 
         event.add('dtstart', game['datetime'])
-        event.add('dtend', game['datetime'] + timedelta(hours=1))
+        # Use duration from event if available (for practices), else default to 1 hour
+        duration_minutes = game.get('duration', 60)
+        event.add('dtend', game['datetime'] + timedelta(minutes=duration_minutes))
 
         if game.get('location'):
             event.add('location', game['location'])
 
-        desc = [
-            f"Team: {game.get('team_name', 'Unknown')}",
-            f"Opponent: {opponent}",
-            f"League: {game.get('league', 'Basketball')}"
-        ]
-        # Add score for completed games
-        if won_lost and team_score and opponent_score:
-            result_text = "Win" if won_lost == 'W' else "Loss" if won_lost == 'L' else won_lost
-            desc.append(f"Result: {result_text} {team_score}-{opponent_score}")
-        if is_tournament:
-            desc.append("Type: Tournament/Playoff")
-        if game.get('location'):
-            desc.append(f"Location: {game['location']}")
-        if game.get('game_type') and not is_tournament:
-            desc.append(f"Game: {game['game_type']}")
-        # Add jersey info based on home/away
-        jerseys = game.get('jerseys', {})
-        if jerseys:
-            is_away = 'away' in game_type or game_type == 'a'
-            jersey_color = jerseys.get('away' if is_away else 'home')
-            if jersey_color:
-                desc.append(f"Jersey: {jersey_color}")
-        if game.get('directions'):
-            desc.append(f"\nDirections: {game['directions']}")
+        if is_practice:
+            # Practice description
+            desc = [
+                f"Team: {game.get('team_name', 'Unknown')}",
+                f"Type: Practice",
+                f"Duration: {duration_minutes} minutes"
+            ]
+            if game.get('location'):
+                desc.append(f"Location: {game['location']}")
+            if game.get('notes'):
+                desc.append(f"\nNote: {game['notes']}")
+        else:
+            # Game description
+            desc = [
+                f"Team: {game.get('team_name', 'Unknown')}",
+                f"Opponent: {opponent}",
+                f"League: {game.get('league', 'Basketball')}"
+            ]
+            # Add score for completed games
+            won_lost = game.get('won_lost', '')
+            team_score = game.get('team_score', '')
+            opponent_score = game.get('opponent_score', '')
+            if won_lost and team_score and opponent_score:
+                result_text = "Win" if won_lost == 'W' else "Loss" if won_lost == 'L' else won_lost
+                desc.append(f"Result: {result_text} {team_score}-{opponent_score}")
+            if is_tournament:
+                desc.append("Type: Tournament/Playoff")
+            if game.get('location'):
+                desc.append(f"Location: {game['location']}")
+            if game.get('game_type') and not is_tournament:
+                desc.append(f"Game: {game['game_type']}")
+            # Add jersey info based on home/away
+            jerseys = game.get('jerseys', {})
+            if jerseys:
+                is_away = 'away' in game_type or game_type == 'a'
+                jersey_color = jerseys.get('away' if is_away else 'home')
+                if jersey_color:
+                    desc.append(f"Jersey: {jersey_color}")
+            if game.get('directions'):
+                desc.append(f"\nDirections: {game['directions']}")
+
         event.add('description', '\n'.join(desc))
         event.add('dtstamp', datetime.now(EASTERN))
 
-        # 1 hour reminder
+        # Reminders
         alarm1 = Alarm()
         alarm1.add('action', 'DISPLAY')
         alarm1.add('trigger', timedelta(hours=-1))
-        alarm1.add('description', f'Basketball game vs {opponent} in 1 hour')
+        if is_practice:
+            alarm1.add('description', f'Basketball practice in 1 hour')
+        else:
+            alarm1.add('description', f'Basketball game vs {opponent} in 1 hour')
         event.add_component(alarm1)
 
-        # 30 minute reminder
         alarm2 = Alarm()
         alarm2.add('action', 'DISPLAY')
         alarm2.add('trigger', timedelta(minutes=-30))
-        alarm2.add('description', f'Basketball game vs {opponent} in 30 minutes')
+        if is_practice:
+            alarm2.add('description', f'Basketball practice in 30 minutes')
+        else:
+            alarm2.add('description', f'Basketball game vs {opponent} in 30 minutes')
         event.add_component(alarm2)
 
         cal.add_component(event)
@@ -919,6 +1175,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         cal_type = cal.get('type', 'team')
         description = cal.get('description', '')
         games_count = cal.get('games', 0)
+        practices_count = cal.get('practices', 0)
         division_tier = cal.get('division_tier', '')
         wins = cal.get('wins', 0)
         losses = cal.get('losses', 0)
@@ -936,7 +1193,13 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             display_name = f"{league}" if league else cal_name
             highlight_class = ""
 
-        games_info = f"{games_count} games" if games_count else "No games"
+        # Build games/practices info string
+        info_parts = []
+        if games_count:
+            info_parts.append(f"{games_count} games")
+        if practices_count:
+            info_parts.append(f"{practices_count} practices")
+        games_info = ", ".join(info_parts) if info_parts else "No events"
 
         # Build division/standings badges (only shown when toggle is on)
         badges_html = ''
@@ -2723,6 +2986,49 @@ def main():
                     'filter': {'grade': str(grade), 'gender': gender, 'color': color}
                 })
 
+    # Generate practice events for teams with configured practices
+    all_practices = []
+    practices_config = config.get('practices', {})
+    if practices_config:
+        season_start, season_end = parse_season_dates(config)
+        if season_start and season_end:
+            logger.info(f"Season: {season_start.date()} to {season_end.date()}")
+
+            # Build a lookup of team configs by key (grade-gender-color)
+            team_lookup = {}
+            for tc in team_configs:
+                key = f"{tc.get('grade')}-{tc.get('gender')}-{tc.get('color')}"
+                if key not in team_lookup:
+                    team_lookup[key] = tc
+
+            for team_key in practices_config:
+                if team_key in team_lookup:
+                    tc = team_lookup[team_key]
+                    team_name = tc.get('team_name', team_key)
+                    short_name = tc.get('short_name', team_key)
+                else:
+                    # Team not discovered but has practices configured
+                    team_name = f"{town_name} {team_key}"
+                    short_name = team_key
+
+                # Get games for this team to check for conflicts
+                parts = team_key.split('-')
+                if len(parts) >= 3:
+                    grade, gender, color = parts[0], parts[1], parts[2]
+                    team_games_for_practice = [
+                        g for g in all_games
+                        if str(g.get('grade')) == grade and
+                           g.get('gender') == gender and
+                           g.get('color', '').lower() == color.lower()
+                    ]
+                else:
+                    team_games_for_practice = []
+
+                practices = generate_practice_events(config, team_key, team_name, short_name, team_games_for_practice)
+                all_practices.extend(practices)
+
+            logger.info(f"Generated {len(all_practices)} total practice events")
+
     calendar_info = []  # For index.html
 
     # Generate individual team calendars
@@ -2738,10 +3044,16 @@ def main():
                          g.get('gender') == team_config.get('gender') and
                          g.get('color') == team_config.get('color'))]
 
-        ical_data = generate_ical(team_games, team_name, team_id)
+        # Add practices for this team
+        team_key = f"{team_config.get('grade')}-{team_config.get('gender')}-{team_config.get('color')}"
+        team_practices = [p for p in all_practices
+                         if f"{p.get('grade')}-{p.get('gender')}-{p.get('color')}" == team_key]
+        all_events = team_games + team_practices
+
+        ical_data = generate_ical(all_events, team_name, team_id)
         ics_path = output_dir / f"{team_id}.ics"
         ics_path.write_bytes(ical_data)
-        logger.info(f"Wrote {ics_path} with {len(team_games)} games")
+        logger.info(f"Wrote {ics_path} with {len(team_games)} games and {len(team_practices)} practices")
 
         calendar_info.append({
             'type': 'team',
@@ -2750,6 +3062,7 @@ def main():
             'league': team_config.get('league', ''),
             'description': team_config.get('league', ''),
             'games': len(team_games),
+            'practices': len(team_practices),
             'gender': team_config.get('gender', ''),
             'division_tier': team_config.get('division_tier', ''),
             'wins': team_config.get('wins', 0),
@@ -2775,11 +3088,23 @@ def main():
 
         filtered_games = dedupe_games(filtered_games)
 
+        # Filter practices for this combined calendar
+        if combo_filter:
+            filtered_practices = [
+                p for p in all_practices
+                if all(p.get(k) == v for k, v in combo_filter.items())
+            ]
+        else:
+            filtered_practices = all_practices
+
+        # Combine games and practices for the calendar
+        all_events = filtered_games + filtered_practices
+
         # Generate calendar
-        ical_data = generate_ical(filtered_games, combo_name, combo_id)
+        ical_data = generate_ical(all_events, combo_name, combo_id)
         ics_path = output_dir / f"{combo_id}.ics"
         ics_path.write_bytes(ical_data)
-        logger.info(f"Wrote {ics_path} with {len(filtered_games)} games")
+        logger.info(f"Wrote {ics_path} with {len(filtered_games)} games and {len(filtered_practices)} practices")
 
         # Get gender from filter
         combo_gender = combo_filter.get('gender', '')
@@ -2812,6 +3137,7 @@ def main():
             'name': combo_name,
             'description': combo.get('description', ''),
             'games': len(filtered_games),
+            'practices': len(filtered_practices),
             'gender': combo_gender,
             'division_tier': combo_division,
             'wins': combo_wins,
