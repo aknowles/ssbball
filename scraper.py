@@ -131,6 +131,48 @@ def parse_season_dates(config: dict) -> tuple[Optional[datetime], Optional[datet
     return start_date, end_date
 
 
+def parse_blackout_dates(config: dict) -> list[tuple[datetime, datetime, str]]:
+    """Parse blackout date ranges from config (e.g., school vacations).
+
+    Returns:
+        List of (start_date, end_date, reason) tuples for blackout periods.
+    """
+    season = config.get('season', {})
+    blackouts = season.get('blackout_dates', [])
+    parsed = []
+
+    for blackout in blackouts:
+        start_str = blackout.get('start')
+        end_str = blackout.get('end')
+        reason = blackout.get('reason', 'Blackout')
+
+        if not start_str or not end_str:
+            continue
+
+        try:
+            start = datetime.strptime(start_str, '%Y-%m-%d').replace(tzinfo=EASTERN)
+            end = datetime.strptime(end_str, '%Y-%m-%d').replace(
+                hour=23, minute=59, second=59, tzinfo=EASTERN
+            )
+            parsed.append((start, end, reason))
+        except ValueError:
+            logger.warning(f"Invalid blackout date format: {start_str} - {end_str}")
+
+    return parsed
+
+
+def is_blackout_date(dt: datetime, blackouts: list[tuple[datetime, datetime, str]]) -> Optional[str]:
+    """Check if a date falls within a blackout period.
+
+    Returns:
+        The reason string if date is blacked out, None otherwise.
+    """
+    for start, end, reason in blackouts:
+        if start <= dt <= end:
+            return reason
+    return None
+
+
 def generate_practice_events(config: dict, team_key: str, team_name: str, short_name: str, team_games: list = None) -> list[dict]:
     """Generate practice events for a team based on recurring schedules and modifications.
 
@@ -176,6 +218,9 @@ def generate_practice_events(config: dict, team_key: str, team_name: str, short_
     if not season_start or not season_end:
         logger.warning(f"No season dates configured, skipping practices for {team_key}")
         return []
+
+    # Parse blackout dates (school vacations, etc.)
+    blackouts = parse_blackout_dates(config)
 
     events = []
     recurring = team_practices.get('recurring', [])
@@ -242,6 +287,13 @@ def generate_practice_events(config: dict, team_key: str, team_name: str, short_
                     if mod.get('notes'):
                         notes = mod['notes']
 
+            # Check for blackout dates (school vacations)
+            blackout_reason = is_blackout_date(current, blackouts)
+            if blackout_reason:
+                logger.info(f"Skipping practice on {current.date()} for {team_key} - {blackout_reason}")
+                current += timedelta(weeks=1)
+                continue
+
             # Check for game conflicts before creating practice
             if conflicts_with_game(current, duration):
                 logger.info(f"Skipping practice on {current.date()} for {team_key} - conflicts with game")
@@ -288,7 +340,7 @@ def generate_practice_events(config: dict, team_key: str, team_name: str, short_
             logger.warning(f"Invalid adhoc practice date/time: {date_str} {time_str}")
             continue
 
-        # Check if within season and no game conflict
+        # Check if within season and no game conflict (ad-hoc practices ignore blackouts)
         if season_start <= practice_dt <= season_end:
             if conflicts_with_game(practice_dt, duration):
                 logger.info(f"Skipping adhoc practice on {practice_dt.date()} for {team_key} - conflicts with game")

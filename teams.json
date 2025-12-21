@@ -20,7 +20,19 @@
   },
   "season": {
     "start": "2026-01-01",
-    "end": "2026-03-31"
+    "end": "2026-03-31",
+    "blackout_dates": [
+      {
+        "start": "2026-02-16",
+        "end": "2026-02-20",
+        "reason": "February Vacation (Presidents Day Week)"
+      },
+      {
+        "start": "2026-04-20",
+        "end": "2026-04-24",
+        "reason": "April Vacation (Patriots Day Week)"
+      }
+    ]
   },
   "practices": {
     "5-M-Red": {

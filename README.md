@@ -111,7 +111,11 @@ Add recurring practice schedules that appear in team calendars alongside games:
 {
   "season": {
     "start": "2026-01-01",
-    "end": "2026-03-31"
+    "end": "2026-03-31",
+    "blackout_dates": [
+      {"start": "2026-02-16", "end": "2026-02-20", "reason": "February Vacation"},
+      {"start": "2026-04-20", "end": "2026-04-24", "reason": "April Vacation"}
+    ]
   },
   "practices": {
     "5-M-White": {
@@ -120,14 +124,8 @@ Add recurring practice schedules that appear in team calendars alongside games:
           "day": "Tuesday",
           "time": "18:15",
           "duration": 90,
-          "location": "Milton Academy ACC Gym, Milton MA",
-          "notes": "Bring water bottle"
-        },
-        {
-          "day": "Saturday",
-          "time": "09:30",
-          "duration": 90,
-          "location": "Collicot Elementary School, Edge Hill Rd, Milton MA"
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
         }
       ],
       "adhoc": [],
@@ -139,9 +137,14 @@ Add recurring practice schedules that appear in team calendars alongside games:
 
 **Fields:**
 - `season.start` / `season.end` — Date range for generating practices (YYYY-MM-DD)
+- `season.blackout_dates` — School vacation weeks when recurring practices are skipped (ad-hoc practices still allowed)
 - `recurring` — Weekly practices with day, time (24h), duration (minutes), location, and optional notes
 - `adhoc` — One-off practices: `{"date": "2026-02-15", "time": "10:00", "duration": 60, "location": "..."}`
 - `modifications` — Cancel or change specific dates (see below)
+
+**Automatic skipping:** Recurring practices are automatically skipped when they:
+- Fall during a blackout period (school vacations)
+- Conflict with a scheduled game (within 1 hour before/after)
 
 **Modifying specific practices:**
 
@@ -154,7 +157,11 @@ Add recurring practice schedules that appear in team calendars alongside games:
 }
 ```
 
-Practices are automatically skipped when they conflict with scheduled games (within 1 hour).
+#### Crowdsourced Schedule Updates
+
+Practice schedules are **community-maintained**. Unlike games (which are pulled automatically from league websites), practice times are manually configured and rely on coaches/parents to keep them up to date.
+
+If a practice time changes, please submit a change request so everyone's calendars stay accurate!
 
 #### Request Practice Changes via GitHub Issues
 
@@ -246,6 +253,19 @@ open docs/index.html
 **Want notifications when the workflow fails?**
 - The workflow automatically creates a GitHub issue with the `workflow-failure` label when it fails
 - Close the issue after fixing the problem; a new one will be created on the next failure
+
+**Practice not showing on calendar?**
+- Practice schedules are crowdsourced — they may not be configured for your team yet
+- Check if your team has an entry in the `practices` section of `teams.json`
+- Submit a GitHub issue to request your team's practice schedule be added
+
+**Practice showing during school vacation?**
+- Check that the vacation week is listed in `season.blackout_dates`
+- Only recurring practices are skipped during blackouts — ad-hoc practices are not affected
+
+**Why is a practice missing on game day?**
+- Practices within 1 hour of a scheduled game are automatically skipped
+- If the practice should still occur, add it as an ad-hoc practice for that specific date
 
 ## Files
 
