@@ -2674,6 +2674,36 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                How do I update practice times?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Practice schedules are crowdsourced and we rely on coaches/parents to keep them up to date. To request a change:</p>
+                <ul>
+                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=cancel-practice.yml">Cancel a practice</a></li>
+                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=modify-practice.yml">Modify a practice</a> (change time, location, or duration)</li>
+                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=add-practice.yml">Add a practice</a> (schedule an extra one-time practice)</li>
+                </ul>
+                <p>A maintainer will review and approve changes before they take effect.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Why is a practice missing from my calendar?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <ul>
+                    <li>Practices within 1 hour of a scheduled game are automatically skipped</li>
+                    <li>Practices during school vacation weeks are skipped</li>
+                    <li>Your team's practice schedule may not be configured yet — <a href="https://github.com/aknowles/ssbball/issues/new?template=add-practice.yml">submit a request</a> to add it</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 I found a bug or have a suggestion. How do I report it?
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
