@@ -257,7 +257,7 @@ open docs/index.html
 **Practice not showing on calendar?**
 - Practice schedules are crowdsourced — they may not be configured for your team yet
 - Check if your team has an entry in the `practices` section of `teams.json`
-- Submit a GitHub issue to request your team's practice schedule be added
+- [Submit a GitHub issue](../../issues/new?template=add-practice.yml) to request your team's practice schedule be added
 
 **Practice showing during school vacation?**
 - Check that the vacation week is listed in `season.blackout_dates`
@@ -265,7 +265,11 @@ open docs/index.html
 
 **Why is a practice missing on game day?**
 - Practices within 1 hour of a scheduled game are automatically skipped
-- If the practice should still occur, add it as an ad-hoc practice for that specific date
+- If the practice should still occur, [add it as an ad-hoc practice](../../issues/new?template=add-practice.yml) for that specific date
+
+**How do I update practice times?**
+- [Cancel a practice](../../issues/new?template=cancel-practice.yml), [modify a practice](../../issues/new?template=modify-practice.yml), or [add a practice](../../issues/new?template=add-practice.yml)
+- A maintainer will review and approve changes before they take effect
 
 ## Season Rollover
 
