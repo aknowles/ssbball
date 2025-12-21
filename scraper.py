@@ -2700,10 +2700,17 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             <a href="https://github.com/aknowles/ssbball/issues" target="_blank" rel="noopener">
                 Report an Issue
             </a>
+            <a href="https://github.com/aknowles/ssbball/issues/new/choose" target="_blank" rel="noopener">
+                Request Practice Change
+            </a>
         </div>
         <div class="footer-meta">
             Last updated: {now}
         </div>
+        <p class="footer-disclaimer">
+            <strong>Practice schedules are community-maintained.</strong> Games update automatically from league websites.
+            Practices rely on crowdsourcing — <a href="https://github.com/aknowles/ssbball/issues/new/choose">submit a change request</a> if times change.
+        </p>
         <p class="footer-disclaimer">
             This is an unofficial community project. Not affiliated with, endorsed by, or connected to
             <a href="http://miltontravelbasketball.com">Milton Travel Basketball</a>,
