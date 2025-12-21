@@ -267,12 +267,47 @@ open docs/index.html
 - Practices within 1 hour of a scheduled game are automatically skipped
 - If the practice should still occur, add it as an ad-hoc practice for that specific date
 
+## Season Rollover
+
+At the start of each new season, update the configuration for the new year using the rollover helper script:
+
+```bash
+# Preview what would change
+python rollover_season.py 2027
+
+# Apply changes to teams.json
+python rollover_season.py 2027 --apply
+```
+
+The script automatically:
+- Updates season dates (January 1 - March 31)
+- Generates blackout dates for MA school calendar:
+  - New Year's Day
+  - Martin Luther King Jr. Day (3rd Monday in January)
+  - February Vacation (Presidents Day week)
+  - April Vacation (Patriots Day week)
+- Clears old modifications and ad-hoc entries (use `--keep-adhoc` or `--keep-modifications` to preserve)
+
+### What Stays the Same
+
+- **Recurring practice schedules** — These typically don't change between seasons
+- **Coach names** — Updated separately as needed
+- **Team aliases** — League naming conventions stay consistent
+
+### Manual Review
+
+After running the rollover script, review:
+1. **Practice locations** — Gyms may change between seasons
+2. **Practice times** — Coaches may adjust schedules
+3. **Blackout dates** — Add any town-specific dates not covered by the script
+
 ## Files
 
 | File | Purpose |
 |------|---------|
 | `teams.json` | Town configuration (edit this!) |
 | `scraper.py` | Main scraper script |
+| `rollover_season.py` | Season rollover helper script |
 | `.github/workflows/update-calendars.yml` | Hourly calendar update workflow |
 | `.github/workflows/process-practice-changes.yml` | Processes practice change issues |
 | `.github/ISSUE_TEMPLATE/` | Issue templates for practice changes |
