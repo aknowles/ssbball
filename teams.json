@@ -23,6 +23,16 @@
     "end": "2026-03-31",
     "blackout_dates": [
       {
+        "start": "2026-01-01",
+        "end": "2026-01-01",
+        "reason": "New Year's Day"
+      },
+      {
+        "start": "2026-01-19",
+        "end": "2026-01-19",
+        "reason": "Martin Luther King Jr. Day"
+      },
+      {
         "start": "2026-02-16",
         "end": "2026-02-20",
         "reason": "February Vacation (Presidents Day Week)"
