@@ -1155,6 +1155,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 short_name = g.get('short_name', '')
                 location = g.get('location', '')
                 venue = location.split(',')[0] if location else ''
+                gender = g.get('gender', '')
 
                 if 'away' in game_type or game_type == 'a':
                     matchup = f'@ {opponent}'
@@ -1162,7 +1163,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     matchup = f'vs {opponent}'
 
                 game_items.append(f'''
-                    <div class="games-row">
+                    <div class="games-row" data-gender="{gender}">
                         <span class="games-time">{time_str}</span>
                         <span class="games-team">{short_name}</span>
                         <span class="games-matchup">{emoji} {matchup}</span>
@@ -1172,9 +1173,14 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
             sections.append(f'''
                 <div class="games-subsection">
-                    <h3>Today's Games</h3>
-                    <div class="games-list">
-                        {''.join(game_items)}
+                    <button class="collapsible active" onclick="toggleSection(this)">
+                        <span class="subsection-title">Today's Games</span>
+                        <span class="arrow">▼</span>
+                    </button>
+                    <div class="collapsible-content open">
+                        <div class="games-list">
+                            {''.join(game_items)}
+                        </div>
                     </div>
                 </div>
             ''')
@@ -1193,6 +1199,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 is_tournament = g.get('is_tournament', False)
                 emoji = '🏆' if is_tournament else '🏀'
                 short_name = g.get('short_name', '')
+                gender = g.get('gender', '')
 
                 result_emoji = '✅' if won_lost == 'W' else '❌' if won_lost == 'L' else '➖'
                 score = f'{team_score}-{opp_score}' if team_score and opp_score else ''
@@ -1203,7 +1210,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     matchup = f'vs {opponent}'
 
                 result_items.append(f'''
-                    <div class="games-row result">
+                    <div class="games-row result" data-gender="{gender}">
                         <span class="games-result">{result_emoji}</span>
                         <span class="games-date">{date_str}</span>
                         <span class="games-team">{short_name}</span>
@@ -1214,9 +1221,14 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
             sections.append(f'''
                 <div class="games-subsection">
-                    <h3>Recent Results</h3>
-                    <div class="games-list">
-                        {''.join(result_items)}
+                    <button class="collapsible active" onclick="toggleSection(this)">
+                        <span class="subsection-title">Recent Results</span>
+                        <span class="arrow">▼</span>
+                    </button>
+                    <div class="collapsible-content open">
+                        <div class="games-list">
+                            {''.join(result_items)}
+                        </div>
                     </div>
                 </div>
             ''')
@@ -2215,6 +2227,37 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             border-bottom: 1px solid var(--color-border-light);
         }}
 
+        .games-subsection .collapsible {{
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--color-bg-subtle);
+        }}
+
+        .games-subsection .collapsible.active {{
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        }}
+
+        .games-subsection .collapsible:not(.active) {{
+            border-radius: var(--radius-sm);
+        }}
+
+        .games-subsection .collapsible-content {{
+            background: var(--color-bg-subtle);
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            padding: 0 var(--spacing-sm);
+        }}
+
+        .games-subsection .collapsible-content.open {{
+            padding: 0 var(--spacing-sm) var(--spacing-sm) var(--spacing-sm);
+        }}
+
+        .subsection-title {{
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }}
+
         .games-list {{
             display: flex;
             flex-direction: column;
@@ -2492,8 +2535,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             outline-offset: 2px;
         }}
 
-        /* Hidden team groups (for filtering) */
-        .team-group.hidden {{
+        /* Hidden elements (for filtering) */
+        .team-group.hidden,
+        .games-row.hidden {{
             display: none;
         }}
 
@@ -3023,6 +3067,17 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     group.classList.remove('hidden');
                 }} else {{
                     group.classList.add('hidden');
+                }}
+            }});
+
+            // Filter game rows in Games section
+            const gameRows = document.querySelectorAll('.games-row');
+            gameRows.forEach(row => {{
+                const gender = row.dataset.gender;
+                if (filter === 'all' || gender === filter) {{
+                    row.classList.remove('hidden');
+                }} else {{
+                    row.classList.add('hidden');
                 }}
             }});
 
