@@ -1114,6 +1114,120 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         # Deduplicate games (prefers league over non-league for same game)
         return dedupe_games(team_games)
 
+    def make_games_section_html() -> str:
+        """Generate the Games section showing today's games and recent results (last 3 days)."""
+        now_dt = datetime.now(EASTERN)
+        today_start = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        three_days_ago = today_start - timedelta(days=3)
+
+        # Dedupe all games first
+        deduped_games = dedupe_games(all_games)
+
+        # Today's scheduled games (not yet played)
+        todays_games = [g for g in deduped_games
+                        if g['datetime'] >= now_dt and g['datetime'] < today_end
+                        and not g.get('is_practice', False)]
+        todays_games.sort(key=lambda g: g['datetime'])
+
+        # Recent results (last 3 days, completed games with scores)
+        recent_results = [g for g in deduped_games
+                         if g['datetime'] >= three_days_ago and g['datetime'] < now_dt
+                         and g.get('won_lost')
+                         and not g.get('is_practice', False)]
+        recent_results.sort(key=lambda g: g['datetime'], reverse=True)
+
+        if not todays_games and not recent_results:
+            return ''
+
+        sections = []
+
+        # Today's games section
+        if todays_games:
+            game_items = []
+            for g in todays_games:
+                dt = g['datetime']
+                time_str = dt.strftime('%I:%M %p').lstrip('0').lower()
+                opponent = g.get('opponent', 'TBD')
+                game_type = g.get('game_type', '').lower()
+                is_tournament = g.get('is_tournament', False)
+                emoji = '🏆' if is_tournament else '🏀'
+                short_name = g.get('short_name', '')
+                location = g.get('location', '')
+                venue = location.split(',')[0] if location else ''
+
+                if 'away' in game_type or game_type == 'a':
+                    matchup = f'@ {opponent}'
+                else:
+                    matchup = f'vs {opponent}'
+
+                game_items.append(f'''
+                    <div class="games-row">
+                        <span class="games-time">{time_str}</span>
+                        <span class="games-team">{short_name}</span>
+                        <span class="games-matchup">{emoji} {matchup}</span>
+                        <span class="games-venue">{venue}</span>
+                    </div>
+                ''')
+
+            sections.append(f'''
+                <div class="games-subsection">
+                    <h3>Today's Games</h3>
+                    <div class="games-list">
+                        {''.join(game_items)}
+                    </div>
+                </div>
+            ''')
+
+        # Recent results section
+        if recent_results:
+            result_items = []
+            for g in recent_results:
+                dt = g['datetime']
+                date_str = dt.strftime('%a %b %d').replace(' 0', ' ')
+                opponent = g.get('opponent', 'TBD')
+                game_type = g.get('game_type', '').lower()
+                won_lost = g.get('won_lost', '')
+                team_score = g.get('team_score', '')
+                opp_score = g.get('opponent_score', '')
+                is_tournament = g.get('is_tournament', False)
+                emoji = '🏆' if is_tournament else '🏀'
+                short_name = g.get('short_name', '')
+
+                result_emoji = '✅' if won_lost == 'W' else '❌' if won_lost == 'L' else '➖'
+                score = f'{team_score}-{opp_score}' if team_score and opp_score else ''
+
+                if 'away' in game_type or game_type == 'a':
+                    matchup = f'@ {opponent}'
+                else:
+                    matchup = f'vs {opponent}'
+
+                result_items.append(f'''
+                    <div class="games-row result">
+                        <span class="games-result">{result_emoji}</span>
+                        <span class="games-date">{date_str}</span>
+                        <span class="games-team">{short_name}</span>
+                        <span class="games-matchup">{emoji} {matchup}</span>
+                        <span class="games-score">{score}</span>
+                    </div>
+                ''')
+
+            sections.append(f'''
+                <div class="games-subsection">
+                    <h3>Recent Results</h3>
+                    <div class="games-list">
+                        {''.join(result_items)}
+                    </div>
+                </div>
+            ''')
+
+        return f'''
+            <section class="games-section" aria-labelledby="games-heading">
+                <h2 id="games-heading">Games</h2>
+                {''.join(sections)}
+            </section>
+        '''
+
     def make_schedule_html(grade: str, gender_code: str, color: str) -> str:
         """Generate schedule HTML with upcoming games and recent results."""
         now_dt = datetime.now(EASTERN)
@@ -1478,6 +1592,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             ''')
 
     grade_html = '\n'.join(grade_sections)
+
+    # Generate games section (today's games + recent results)
+    games_section_html = make_games_section_html()
 
     # Note about what games are included
     if include_nl_games:
@@ -2063,6 +2180,118 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             color: var(--color-text);
             min-width: 45px;
             text-align: right;
+        }}
+
+        /* Games section (all teams summary) */
+        .games-section {{
+            background: var(--color-bg-elevated);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+            box-shadow: var(--shadow-sm);
+        }}
+
+        .games-section h2 {{
+            margin: 0 0 var(--spacing-md) 0;
+            font-size: 1.25rem;
+        }}
+
+        .games-subsection {{
+            margin-bottom: var(--spacing-lg);
+        }}
+
+        .games-subsection:last-child {{
+            margin-bottom: 0;
+        }}
+
+        .games-subsection h3 {{
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0 0 var(--spacing-sm) 0;
+            padding-bottom: var(--spacing-xs);
+            border-bottom: 1px solid var(--color-border-light);
+        }}
+
+        .games-list {{
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }}
+
+        .games-row {{
+            display: grid;
+            grid-template-columns: 70px 70px 1fr auto;
+            gap: var(--spacing-sm);
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-sm);
+            font-size: 0.9rem;
+            background: var(--color-bg-subtle);
+            border-radius: var(--radius-sm);
+        }}
+
+        .games-row.result {{
+            grid-template-columns: 28px 85px 70px 1fr auto;
+        }}
+
+        .games-time {{
+            font-weight: 500;
+            color: var(--color-text);
+        }}
+
+        .games-date {{
+            font-weight: 500;
+            color: var(--color-text);
+        }}
+
+        .games-team {{
+            font-weight: 600;
+            color: var(--color-primary);
+        }}
+
+        .games-matchup {{
+            color: var(--color-text);
+        }}
+
+        .games-venue {{
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 180px;
+        }}
+
+        .games-result {{
+            font-size: 1rem;
+        }}
+
+        .games-score {{
+            font-weight: 600;
+            color: var(--color-text);
+            min-width: 50px;
+            text-align: right;
+        }}
+
+        @media (max-width: 640px) {{
+            .games-row {{
+                grid-template-columns: 60px 55px 1fr;
+            }}
+
+            .games-row.result {{
+                grid-template-columns: 24px 70px 55px 1fr;
+            }}
+
+            .games-venue {{
+                display: none;
+            }}
+
+            .games-score {{
+                display: none;
+            }}
         }}
 
         @media (max-width: 640px) {{
@@ -2712,6 +2941,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             </div>
         </div>
     </section>
+
+    {games_section_html}
 
     <div class="settings-toggle">
         <label class="toggle-switch">
