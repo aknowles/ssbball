@@ -81,6 +81,391 @@ def get_leagues(config: dict = None) -> dict:
     return leagues
 
 
+# =============================================================================
+# Schedule Change Detection and Notifications
+# =============================================================================
+
+def game_to_key(game: dict) -> str:
+    """Create a unique key for a game for comparison purposes.
+
+    Uses date, opponent, and team info to create a stable identifier.
+    """
+    dt = game.get('datetime')
+    if hasattr(dt, 'strftime'):
+        date_str = dt.strftime('%Y-%m-%d')
+    else:
+        date_str = str(dt)[:10] if dt else 'unknown'
+
+    opponent = game.get('opponent', 'TBD').lower().strip()
+    grade = game.get('grade', '')
+    gender = game.get('gender', '')
+    color = game.get('color', '')
+
+    return f"{grade}-{gender}-{color}|{date_str}|{opponent}"
+
+
+def game_to_state(game: dict) -> dict:
+    """Convert a game to a serializable state dict for storage."""
+    dt = game.get('datetime')
+    if hasattr(dt, 'isoformat'):
+        datetime_str = dt.isoformat()
+    else:
+        datetime_str = str(dt) if dt else None
+
+    return {
+        'datetime': datetime_str,
+        'opponent': game.get('opponent', ''),
+        'location': game.get('location', ''),
+        'team_name': game.get('team_name', ''),
+        'short_name': game.get('short_name', ''),
+        'grade': game.get('grade', ''),
+        'gender': game.get('gender', ''),
+        'color': game.get('color', ''),
+        'game_type': game.get('game_type', ''),
+        'is_practice': game.get('is_practice', False)
+    }
+
+
+def load_previous_state(state_path: Path) -> dict:
+    """Load the previous schedule state from JSON file."""
+    if not state_path.exists():
+        logger.info(f"No previous state file found at {state_path}")
+        return {}
+
+    try:
+        with open(state_path) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"Error loading previous state: {e}")
+        return {}
+
+
+def save_current_state(state_path: Path, games: list[dict], practices: list[dict]) -> None:
+    """Save the current schedule state to JSON file for next comparison."""
+    state = {
+        'updated': datetime.now(EASTERN).isoformat(),
+        'games': {},
+        'practices': {}
+    }
+
+    for game in games:
+        key = game_to_key(game)
+        state['games'][key] = game_to_state(game)
+
+    for practice in practices:
+        key = game_to_key(practice)
+        state['practices'][key] = game_to_state(practice)
+
+    with open(state_path, 'w') as f:
+        json.dump(state, f, indent=2)
+
+    logger.info(f"Saved schedule state to {state_path}")
+
+
+def detect_changes(previous_state: dict, current_games: list[dict], current_practices: list[dict]) -> dict:
+    """Compare previous and current schedules to detect changes.
+
+    Returns:
+        Dict with 'new', 'deleted', 'modified' lists of change descriptions
+    """
+    changes = {
+        'new': [],
+        'deleted': [],
+        'modified': []
+    }
+
+    prev_games = previous_state.get('games', {})
+    prev_practices = previous_state.get('practices', {})
+
+    # Build current state dicts
+    curr_games = {}
+    for game in current_games:
+        key = game_to_key(game)
+        curr_games[key] = game
+
+    curr_practices = {}
+    for practice in current_practices:
+        key = game_to_key(practice)
+        curr_practices[key] = practice
+
+    # Check for new and modified games
+    for key, game in curr_games.items():
+        team_key = f"{game.get('grade')}-{game.get('gender')}-{game.get('color')}"
+        if key not in prev_games:
+            changes['new'].append({
+                'type': 'game',
+                'team_key': team_key,
+                'event': game
+            })
+        else:
+            # Check for modifications (time or location change)
+            prev = prev_games[key]
+            curr_state = game_to_state(game)
+
+            time_changed = prev.get('datetime') != curr_state.get('datetime')
+            location_changed = prev.get('location') != curr_state.get('location')
+
+            if time_changed or location_changed:
+                changes['modified'].append({
+                    'type': 'game',
+                    'team_key': team_key,
+                    'event': game,
+                    'previous': prev,
+                    'time_changed': time_changed,
+                    'location_changed': location_changed
+                })
+
+    # Check for deleted games
+    for key, prev in prev_games.items():
+        if key not in curr_games:
+            team_key = f"{prev.get('grade')}-{prev.get('gender')}-{prev.get('color')}"
+            changes['deleted'].append({
+                'type': 'game',
+                'team_key': team_key,
+                'previous': prev
+            })
+
+    # Same checks for practices
+    for key, practice in curr_practices.items():
+        team_key = f"{practice.get('grade')}-{practice.get('gender')}-{practice.get('color')}"
+        if key not in prev_practices:
+            changes['new'].append({
+                'type': 'practice',
+                'team_key': team_key,
+                'event': practice
+            })
+        else:
+            prev = prev_practices[key]
+            curr_state = game_to_state(practice)
+
+            time_changed = prev.get('datetime') != curr_state.get('datetime')
+            location_changed = prev.get('location') != curr_state.get('location')
+
+            if time_changed or location_changed:
+                changes['modified'].append({
+                    'type': 'practice',
+                    'team_key': team_key,
+                    'event': practice,
+                    'previous': prev,
+                    'time_changed': time_changed,
+                    'location_changed': location_changed
+                })
+
+    for key, prev in prev_practices.items():
+        if key not in curr_practices:
+            team_key = f"{prev.get('grade')}-{prev.get('gender')}-{prev.get('color')}"
+            changes['deleted'].append({
+                'type': 'practice',
+                'team_key': team_key,
+                'previous': prev
+            })
+
+    return changes
+
+
+def format_datetime_for_notification(dt_str: str) -> str:
+    """Format a datetime string for human-readable notification."""
+    if not dt_str:
+        return "TBD"
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        return dt.strftime('%a %b %d @ %I:%M%p').replace(' 0', ' ').replace('AM', 'am').replace('PM', 'pm')
+    except (ValueError, TypeError):
+        return dt_str[:16] if len(dt_str) > 16 else dt_str
+
+
+def send_ntfy_notification(topic: str, title: str, message: str, priority: str = 'default', tags: list = None, dry_run: bool = False) -> bool:
+    """Send a notification via ntfy.sh.
+
+    Args:
+        topic: The ntfy topic to send to
+        title: Notification title
+        message: Notification body
+        priority: 'min', 'low', 'default', 'high', 'urgent'
+        tags: List of emoji tags (e.g., ['basketball', 'warning'])
+        dry_run: If True, log what would be sent but don't actually send
+
+    Returns:
+        True if successful (or dry_run), False otherwise
+    """
+    url = f"https://ntfy.sh/{topic}"
+
+    if dry_run:
+        logger.info(f"[DRY-RUN] Would send notification to {topic}:")
+        logger.info(f"  Title: {title}")
+        logger.info(f"  Priority: {priority}")
+        logger.info(f"  Tags: {tags}")
+        for line in message.split('\n'):
+            logger.info(f"  Message: {line}")
+        return True
+
+    headers = {
+        'Title': title,
+        'Priority': priority
+    }
+
+    if tags:
+        headers['Tags'] = ','.join(tags)
+
+    try:
+        data = message.encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                logger.info(f"Sent notification to {topic}: {title}")
+                return True
+            else:
+                logger.warning(f"Notification failed with status {response.status}")
+                return False
+    except Exception as e:
+        logger.warning(f"Failed to send notification to {topic}: {e}")
+        return False
+
+
+def send_change_notifications(changes: dict, ntfy_prefix: str, town_name: str, dry_run: bool = False) -> int:
+    """Send notifications for all detected changes.
+
+    Args:
+        changes: Dict from detect_changes()
+        ntfy_prefix: Prefix for ntfy topics (e.g., 'ssbball')
+        town_name: Town name for notifications
+        dry_run: If True, log what would be sent but don't actually send
+
+    Returns:
+        Number of notifications sent (or would be sent in dry_run mode)
+    """
+    sent = 0
+
+    # Group changes by team
+    teams_with_changes = set()
+    for change in changes['new'] + changes['deleted'] + changes['modified']:
+        teams_with_changes.add(change.get('team_key', 'unknown'))
+
+    for team_key in teams_with_changes:
+        team_changes = {
+            'new': [c for c in changes['new'] if c.get('team_key') == team_key],
+            'deleted': [c for c in changes['deleted'] if c.get('team_key') == team_key],
+            'modified': [c for c in changes['modified'] if c.get('team_key') == team_key]
+        }
+
+        # Build notification message
+        messages = []
+
+        for change in team_changes['new']:
+            event = change['event']
+            event_type = 'Practice' if change['type'] == 'practice' else 'Game'
+            dt = event.get('datetime')
+            if hasattr(dt, 'strftime'):
+                dt_str = dt.strftime('%a %b %d @ %I:%M%p').replace(' 0', ' ')
+            else:
+                dt_str = format_datetime_for_notification(str(dt) if dt else '')
+
+            opponent = event.get('opponent', '')
+            if change['type'] == 'practice':
+                messages.append(f"NEW {event_type}: {dt_str}")
+            else:
+                messages.append(f"NEW {event_type}: {dt_str} vs {opponent}")
+
+        for change in team_changes['deleted']:
+            prev = change['previous']
+            event_type = 'Practice' if change['type'] == 'practice' else 'Game'
+            dt_str = format_datetime_for_notification(prev.get('datetime', ''))
+            opponent = prev.get('opponent', '')
+
+            if change['type'] == 'practice':
+                messages.append(f"CANCELLED {event_type}: {dt_str}")
+            else:
+                messages.append(f"CANCELLED {event_type}: {dt_str} vs {opponent}")
+
+        for change in team_changes['modified']:
+            event = change['event']
+            prev = change['previous']
+            event_type = 'Practice' if change['type'] == 'practice' else 'Game'
+
+            dt = event.get('datetime')
+            if hasattr(dt, 'strftime'):
+                new_dt_str = dt.strftime('%a %b %d @ %I:%M%p').replace(' 0', ' ')
+            else:
+                new_dt_str = format_datetime_for_notification(str(dt) if dt else '')
+
+            opponent = event.get('opponent', '')
+
+            change_desc = []
+            if change.get('time_changed'):
+                old_dt_str = format_datetime_for_notification(prev.get('datetime', ''))
+                change_desc.append(f"time: {old_dt_str} → {new_dt_str}")
+            if change.get('location_changed'):
+                change_desc.append(f"location changed")
+
+            change_info = ', '.join(change_desc)
+            if change['type'] == 'practice':
+                messages.append(f"CHANGED {event_type}: {change_info}")
+            else:
+                messages.append(f"CHANGED {event_type} vs {opponent}: {change_info}")
+
+        if messages:
+            # Create topic name: prefix-grade-gender-color (e.g., ssbball-5-m-red)
+            topic = f"{ntfy_prefix}-{team_key}".lower().replace(' ', '-')
+
+            # Determine priority based on urgency
+            has_cancellation = len(team_changes['deleted']) > 0
+            priority = 'high' if has_cancellation else 'default'
+
+            # Determine tags
+            tags = ['basketball']
+            if has_cancellation:
+                tags.append('warning')
+            if team_changes['new']:
+                tags.append('calendar')
+
+            title = f"{town_name} {team_key} Schedule Update"
+            message = '\n'.join(messages)
+
+            if send_ntfy_notification(topic, title, message, priority=priority, tags=tags, dry_run=dry_run):
+                sent += 1
+
+    return sent
+
+
+def send_test_notification(ntfy_prefix: str, team_key: str, town_name: str, custom_message: str = None) -> bool:
+    """Send a test notification or custom ad hoc message.
+
+    Args:
+        ntfy_prefix: Prefix for ntfy topics (e.g., 'milton-basketball')
+        team_key: Team identifier (e.g., '5-m-red')
+        town_name: Town name for notifications
+        custom_message: Optional custom message (for ad hoc announcements)
+
+    Returns:
+        True if successful, False otherwise
+    """
+    topic = f"{ntfy_prefix}-{team_key}".lower().replace(' ', '-')
+
+    if custom_message:
+        # Ad hoc announcement mode
+        title = f"{town_name} {team_key.upper()} - Announcement"
+        message = custom_message
+        tags = ['basketball', 'loudspeaker']
+        priority = 'high'
+    else:
+        # Test notification mode
+        title = f"{town_name} {team_key.upper()} - Test Notification"
+        message = (
+            "This is a test notification from the schedule system.\n"
+            "If you see this, notifications are working correctly!\n"
+            "\n"
+            "You will receive alerts when:\n"
+            "- Games are added or cancelled\n"
+            "- Game times or locations change\n"
+            "- Practices are added, cancelled, or modified"
+        )
+        tags = ['basketball', 'white_check_mark']
+        priority = 'default'
+
+    logger.info(f"Sending notification to {topic}")
+    return send_ntfy_notification(topic, title, message, priority=priority, tags=tags)
+
+
 def get_season() -> str:
     """Calculate the current season (year)."""
     now = datetime.now()
@@ -1053,7 +1438,7 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
     return cal.to_ical()
 
 
-def generate_index_html(calendars: list[dict], base_url: str, town_name: str, include_nl_games: bool = True, coaches: dict = None, all_games: list = None) -> str:
+def generate_index_html(calendars: list[dict], base_url: str, town_name: str, include_nl_games: bool = True, coaches: dict = None, all_games: list = None, ntfy_topic: str = None) -> str:
     """Generate the landing page HTML with hierarchical sections: Grade -> Color -> Calendars.
 
     Args:
@@ -1065,6 +1450,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                  Single coach: "Name" or ["Name", "email@example.com"]
                  Multiple coaches: [["Name1", "email1"], ["Name2"], ["Name3", "email3"]]
         all_games: Optional list of all game dicts for schedule display
+        ntfy_topic: Optional ntfy.sh topic prefix for push notifications
     """
     coaches = coaches or {}
     all_games = all_games or []
@@ -1613,6 +1999,79 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         games_included_note = 'These calendars include <strong>league games and tournaments/playoffs</strong> (🏆 indicates tournament games).'
     else:
         games_included_note = 'These calendars include <strong>league games only</strong> — tournaments and playoffs are not included.'
+
+    # Generate notifications section if ntfy_topic is configured
+    if ntfy_topic:
+        # Build list of unique team topics from calendars (combined calendars only to avoid duplicates)
+        team_topics = []
+        seen_keys = set()
+        for cal in calendars:
+            if cal.get('type') == 'combined':
+                cal_id = cal.get('id', '')
+                cal_name = cal.get('name', '')
+                gender = cal.get('gender', 'M')
+
+                # Extract grade and color from the name
+                grade = extract_grade(cal)
+                color = extract_color(cal)
+
+                team_key = f"{grade}-{gender}-{color}".lower()
+                if team_key not in seen_keys:
+                    seen_keys.add(team_key)
+                    topic = f"{ntfy_topic}-{team_key}".lower().replace(' ', '-')
+                    gender_label = 'Boys' if gender == 'M' else 'Girls'
+                    label = f"{grade}th {gender_label} {color}"
+                    team_topics.append((topic, label, gender))
+
+        # Sort by grade then gender then color
+        team_topics.sort(key=lambda x: (x[1][0], x[2], x[1]))
+
+        topics_html = '\n                '.join([
+            f'<div class="topic-item" data-gender="{gender}"><code>{topic}</code> <span class="topic-label">{label}</span></div>'
+            for topic, label, gender in team_topics
+        ]) if team_topics else '<p>No team topics available yet.</p>'
+
+        notifications_section = f'''
+    <section class="notifications-section" aria-labelledby="notifications-heading">
+        <h2 id="notifications-heading">Get Schedule Change Alerts</h2>
+        <p>Want to be notified when games are added, cancelled, or rescheduled? Get push notifications on your phone!</p>
+
+        <div class="notification-steps">
+            <div class="step">
+                <span class="step-number">1</span>
+                <div class="step-content">
+                    <strong>Install the ntfy app</strong>
+                    <p>Free app for <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noopener">iPhone/iPad</a> or <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener">Android</a></p>
+                </div>
+            </div>
+            <div class="step">
+                <span class="step-number">2</span>
+                <div class="step-content">
+                    <strong>Subscribe to your team's topic</strong>
+                    <p>In the app, tap + and enter your team's topic (see below)</p>
+                </div>
+            </div>
+            <div class="step">
+                <span class="step-number">3</span>
+                <div class="step-content">
+                    <strong>Get notified!</strong>
+                    <p>You'll receive alerts when games are added, cancelled, or times/locations change</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="notification-topics">
+            <h3>Team Topics</h3>
+            <p class="topic-instructions">Copy your team's topic and paste it in the ntfy app:</p>
+            <div class="topics-grid">
+                {topics_html}
+            </div>
+            <p class="topic-format"><strong>Topic format:</strong> <code>{ntfy_topic}-[grade]-[m/f]-[color]</code><br>
+            <span class="topic-example">Example: {ntfy_topic}-5-m-red for 5th grade Boys Red</span></p>
+        </div>
+    </section>'''
+    else:
+        notifications_section = ''
 
     return f'''<!DOCTYPE html>
 <html lang="en">
@@ -2578,6 +3037,135 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             color: var(--color-text-secondary);
         }}
 
+        /* Notifications section */
+        .notifications-section {{
+            background: linear-gradient(135deg, var(--color-bg-elevated) 0%, rgba(99, 102, 241, 0.1) 100%);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-top: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }}
+
+        .notifications-section h2 {{
+            margin-top: 0;
+            border: none;
+            display: block;
+        }}
+
+        .notifications-section p {{
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-md);
+        }}
+
+        .notification-steps {{
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            margin: var(--spacing-lg) 0;
+        }}
+
+        .step {{
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+        }}
+
+        .step-number {{
+            background: var(--color-primary);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }}
+
+        .step-content strong {{
+            display: block;
+            color: var(--color-text);
+            margin-bottom: 4px;
+        }}
+
+        .step-content p {{
+            margin: 0;
+            font-size: 0.9rem;
+        }}
+
+        .step-content a {{
+            color: var(--color-primary);
+        }}
+
+        .notification-topics {{
+            background: var(--color-bg-subtle);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }}
+
+        .notification-topics h3 {{
+            margin: 0 0 var(--spacing-sm) 0;
+            font-size: 1rem;
+            color: var(--color-text);
+        }}
+
+        .topic-instructions {{
+            margin-bottom: var(--spacing-md) !important;
+            font-size: 0.9rem;
+        }}
+
+        .topics-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }}
+
+        .topic-item {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            background: var(--color-bg-elevated);
+            border-radius: var(--radius-sm);
+        }}
+
+        .topic-item code {{
+            background: var(--color-bg-subtle);
+            padding: 4px 8px;
+            border-radius: var(--radius-xs);
+            font-size: 0.85rem;
+            color: var(--color-primary);
+            font-family: monospace;
+        }}
+
+        .topic-label {{
+            color: var(--color-text-secondary);
+            font-size: 0.85rem;
+        }}
+
+        .topic-format {{
+            margin: 0 !important;
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+        }}
+
+        .topic-format code {{
+            background: var(--color-bg-elevated);
+            padding: 2px 6px;
+            border-radius: var(--radius-xs);
+            font-size: 0.85rem;
+        }}
+
+        .topic-example {{
+            font-style: italic;
+            opacity: 0.8;
+        }}
+
         /* Warning box */
         .warning-box {{
             background: var(--color-warning-bg);
@@ -2863,6 +3451,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         </ul>
         <p class="tip"><strong>Tip:</strong> Subscribed calendars auto-update periodically (usually every few hours). Data is refreshed hourly during game hours.</p>
     </section>
+
+    {notifications_section}
 
     <section class="warning-box" aria-labelledby="notes-heading">
         <h2 id="notes-heading">⚠️ Important Notes</h2>
@@ -3301,6 +3891,10 @@ def main():
     parser.add_argument('--config', '-c', required=True, help='Config file (JSON)')
     parser.add_argument('--output', '-o', default='docs', help='Output directory for ICS files')
     parser.add_argument('--base-url', '-u', default='', help='Base URL for calendar links')
+    parser.add_argument('--ntfy-topic', '-n', default='', help='ntfy.sh topic prefix for notifications (e.g., "ssbball")')
+    parser.add_argument('--dry-run', action='store_true', help='Detect changes and log notifications without sending them')
+    parser.add_argument('--test-notification', metavar='TEAM', help='Send a test notification to a specific team (e.g., "5-m-red")')
+    parser.add_argument('--notification-message', metavar='MSG', help='Custom message for test notification (use with --test-notification)')
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -3403,6 +3997,83 @@ def main():
                 all_practices.extend(practices)
 
             logger.info(f"Generated {len(all_practices)} total practice events")
+
+    # ==========================================================================
+    # Schedule Change Detection and Notifications
+    # ==========================================================================
+    # Detects and notifies about the following changes:
+    #   - New games/practices added
+    #   - Games/practices cancelled (deleted)
+    #   - Time/date changes to existing games/practices
+    #   - Location changes to existing games/practices
+    #
+    # Does NOT notify about:
+    #   - Score updates
+    #   - Win/loss record changes
+    #   - Home/away designation changes
+    #   - Any other metadata changes
+    # ==========================================================================
+
+    state_path = output_dir / 'schedule_state.json'
+    ntfy_topic = args.ntfy_topic or config.get('ntfy_topic', '')
+    dry_run = args.dry_run
+    test_team = args.test_notification
+    custom_message = args.notification_message
+
+    # Handle test notification / ad hoc message mode
+    if test_team:
+        if not ntfy_topic:
+            logger.error("Cannot send notification: no --ntfy-topic specified")
+        else:
+            if custom_message:
+                logger.info(f"Sending ad hoc message to team: {test_team}")
+            else:
+                logger.info(f"Sending test notification to team: {test_team}")
+            if send_test_notification(ntfy_topic, test_team, town_name, custom_message=custom_message):
+                logger.info("Notification sent successfully!")
+            else:
+                logger.error("Failed to send notification")
+        # Exit early - don't do full scrape for notification mode
+        return
+
+    if dry_run:
+        logger.info("DRY-RUN MODE: Will detect changes but not send actual notifications")
+
+    if ntfy_topic:
+        logger.info(f"Notifications enabled with topic prefix: {ntfy_topic}")
+
+        # Load previous state
+        previous_state = load_previous_state(state_path)
+
+        if previous_state:
+            # Detect changes
+            changes = detect_changes(previous_state, all_games, all_practices)
+
+            total_changes = len(changes['new']) + len(changes['deleted']) + len(changes['modified'])
+            if total_changes > 0:
+                logger.info(f"Detected {total_changes} schedule changes:")
+                logger.info(f"  - {len(changes['new'])} new events")
+                logger.info(f"  - {len(changes['deleted'])} cancelled events")
+                logger.info(f"  - {len(changes['modified'])} modified events")
+
+                # Send notifications (or log them in dry-run mode)
+                sent = send_change_notifications(changes, ntfy_topic, town_name, dry_run=dry_run)
+                if dry_run:
+                    logger.info(f"[DRY-RUN] Would have sent {sent} notifications")
+                else:
+                    logger.info(f"Sent {sent} notifications")
+            else:
+                logger.info("No schedule changes detected")
+        else:
+            logger.info("First run - no previous state to compare against")
+
+        # Save current state for next run (skip in dry-run to allow re-testing)
+        if not dry_run:
+            save_current_state(state_path, all_games, all_practices)
+        else:
+            logger.info("[DRY-RUN] Skipping state save to allow re-testing")
+    else:
+        logger.info("Notifications disabled (no --ntfy-topic specified)")
 
     calendar_info = []  # For index.html
 
@@ -3523,7 +4194,7 @@ def main():
 
     # Generate index.html
     coaches = config.get('coaches', {})
-    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games, coaches=coaches, all_games=all_games)
+    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games, coaches=coaches, all_games=all_games, ntfy_topic=ntfy_topic)
     index_path = output_dir / 'index.html'
     index_path.write_text(index_html)
     logger.info(f"Wrote {index_path}")
