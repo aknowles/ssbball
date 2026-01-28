@@ -427,31 +427,43 @@ def send_change_notifications(changes: dict, ntfy_prefix: str, town_name: str, d
     return sent
 
 
-def send_test_notification(ntfy_prefix: str, team_key: str, town_name: str) -> bool:
-    """Send a test notification to verify ntfy.sh setup.
+def send_test_notification(ntfy_prefix: str, team_key: str, town_name: str, custom_message: str = None) -> bool:
+    """Send a test notification or custom ad hoc message.
 
     Args:
         ntfy_prefix: Prefix for ntfy topics (e.g., 'milton-basketball')
         team_key: Team identifier (e.g., '5-m-red')
         town_name: Town name for notifications
+        custom_message: Optional custom message (for ad hoc announcements)
 
     Returns:
         True if successful, False otherwise
     """
     topic = f"{ntfy_prefix}-{team_key}".lower().replace(' ', '-')
-    title = f"{town_name} {team_key.upper()} - Test Notification"
-    message = (
-        "This is a test notification from the schedule system.\n"
-        "If you see this, notifications are working correctly!\n"
-        "\n"
-        "You will receive alerts when:\n"
-        "- Games are added or cancelled\n"
-        "- Game times or locations change\n"
-        "- Practices are added, cancelled, or modified"
-    )
 
-    logger.info(f"Sending test notification to {topic}")
-    return send_ntfy_notification(topic, title, message, priority='default', tags=['basketball', 'white_check_mark'])
+    if custom_message:
+        # Ad hoc announcement mode
+        title = f"{town_name} {team_key.upper()} - Announcement"
+        message = custom_message
+        tags = ['basketball', 'loudspeaker']
+        priority = 'high'
+    else:
+        # Test notification mode
+        title = f"{town_name} {team_key.upper()} - Test Notification"
+        message = (
+            "This is a test notification from the schedule system.\n"
+            "If you see this, notifications are working correctly!\n"
+            "\n"
+            "You will receive alerts when:\n"
+            "- Games are added or cancelled\n"
+            "- Game times or locations change\n"
+            "- Practices are added, cancelled, or modified"
+        )
+        tags = ['basketball', 'white_check_mark']
+        priority = 'default'
+
+    logger.info(f"Sending notification to {topic}")
+    return send_ntfy_notification(topic, title, message, priority=priority, tags=tags)
 
 
 def get_season() -> str:
@@ -3882,6 +3894,7 @@ def main():
     parser.add_argument('--ntfy-topic', '-n', default='', help='ntfy.sh topic prefix for notifications (e.g., "ssbball")')
     parser.add_argument('--dry-run', action='store_true', help='Detect changes and log notifications without sending them')
     parser.add_argument('--test-notification', metavar='TEAM', help='Send a test notification to a specific team (e.g., "5-m-red")')
+    parser.add_argument('--notification-message', metavar='MSG', help='Custom message for test notification (use with --test-notification)')
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -4005,18 +4018,22 @@ def main():
     ntfy_topic = args.ntfy_topic or config.get('ntfy_topic', '')
     dry_run = args.dry_run
     test_team = args.test_notification
+    custom_message = args.notification_message
 
-    # Handle test notification mode
+    # Handle test notification / ad hoc message mode
     if test_team:
         if not ntfy_topic:
-            logger.error("Cannot send test notification: no --ntfy-topic specified")
+            logger.error("Cannot send notification: no --ntfy-topic specified")
         else:
-            logger.info(f"Sending test notification to team: {test_team}")
-            if send_test_notification(ntfy_topic, test_team, town_name):
-                logger.info("Test notification sent successfully!")
+            if custom_message:
+                logger.info(f"Sending ad hoc message to team: {test_team}")
             else:
-                logger.error("Failed to send test notification")
-        # Exit early - don't do full scrape for test mode
+                logger.info(f"Sending test notification to team: {test_team}")
+            if send_test_notification(ntfy_topic, test_team, town_name, custom_message=custom_message):
+                logger.info("Notification sent successfully!")
+            else:
+                logger.error("Failed to send notification")
+        # Exit early - don't do full scrape for notification mode
         return
 
     if dry_run:

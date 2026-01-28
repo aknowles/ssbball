@@ -17,7 +17,11 @@ on:
         type: boolean
         default: false
       test_team:
-        description: 'Send test notification to team (e.g., 5-m-red). Leave empty for normal run.'
+        description: 'Send notification to team (e.g., 5-m-red). Leave empty for normal run.'
+        type: string
+        default: ''
+      notification_message:
+        description: 'Custom message (optional). If empty with test_team, sends test notification.'
         type: string
         default: ''
 
@@ -74,7 +78,8 @@ jobs:
             --output docs \
             --base-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" \
             ${{ inputs.dry_run == true && '--dry-run' || '' }} \
-            ${{ inputs.test_team != '' && format('--test-notification {0}', inputs.test_team) || '' }}
+            ${{ inputs.test_team != '' && format('--test-notification {0}', inputs.test_team) || '' }} \
+            ${{ inputs.notification_message != '' && format('--notification-message "{0}"', inputs.notification_message) || '' }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
