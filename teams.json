@@ -6,6 +6,7 @@
   "colors": [],
   "include_nl_games": true,
   "base_url": "https://aknowles.github.io/ssbball",
+  "ntfy_topic": "milton-basketball",
   "jerseys": {
     "home": "White",
     "away": "Red"
