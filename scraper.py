@@ -3907,6 +3907,24 @@ def main():
     base_url = args.base_url or config.get('base_url', 'https://example.github.io/ssbball')
     town_name = config.get('town_name', 'Milton')
 
+    # Handle test notification / ad hoc message mode early (no scraping needed)
+    ntfy_topic = args.ntfy_topic or config.get('ntfy_topic', '')
+    test_team = args.test_notification
+    if test_team:
+        if not ntfy_topic:
+            logger.error("Cannot send notification: no --ntfy-topic specified")
+            return
+        custom_message = args.notification_message
+        if custom_message:
+            logger.info(f"Sending ad hoc message to team: {test_team}")
+        else:
+            logger.info(f"Sending test notification to team: {test_team}")
+        if send_test_notification(ntfy_topic, test_team, town_name, custom_message=custom_message):
+            logger.info("Notification sent successfully!")
+        else:
+            logger.error("Failed to send notification")
+        return
+
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -4015,26 +4033,7 @@ def main():
     # ==========================================================================
 
     state_path = output_dir / 'schedule_state.json'
-    ntfy_topic = args.ntfy_topic or config.get('ntfy_topic', '')
     dry_run = args.dry_run
-    test_team = args.test_notification
-    custom_message = args.notification_message
-
-    # Handle test notification / ad hoc message mode
-    if test_team:
-        if not ntfy_topic:
-            logger.error("Cannot send notification: no --ntfy-topic specified")
-        else:
-            if custom_message:
-                logger.info(f"Sending ad hoc message to team: {test_team}")
-            else:
-                logger.info(f"Sending test notification to team: {test_team}")
-            if send_test_notification(ntfy_topic, test_team, town_name, custom_message=custom_message):
-                logger.info("Notification sent successfully!")
-            else:
-                logger.error("Failed to send notification")
-        # Exit early - don't do full scrape for notification mode
-        return
 
     if dry_run:
         logger.info("DRY-RUN MODE: Will detect changes but not send actual notifications")

@@ -89,8 +89,8 @@ jobs:
   deploy:
     needs: scrape
     runs-on: ubuntu-latest
-    # Skip deploy for test notifications (nothing to deploy)
-    if: ${{ inputs.test_team == '' || inputs.test_team == null }}
+    # Skip deploy for test notifications and dry-run (nothing to deploy)
+    if: ${{ (inputs.test_team == '' || inputs.test_team == null) && inputs.dry_run != true }}
 
     environment:
       name: github-pages
