@@ -274,7 +274,7 @@ def format_datetime_for_notification(dt_str: str) -> str:
         return dt_str[:16] if len(dt_str) > 16 else dt_str
 
 
-def send_ntfy_notification(topic: str, title: str, message: str, priority: str = 'default', tags: list = None) -> bool:
+def send_ntfy_notification(topic: str, title: str, message: str, priority: str = 'default', tags: list = None, dry_run: bool = False) -> bool:
     """Send a notification via ntfy.sh.
 
     Args:
@@ -283,11 +283,21 @@ def send_ntfy_notification(topic: str, title: str, message: str, priority: str =
         message: Notification body
         priority: 'min', 'low', 'default', 'high', 'urgent'
         tags: List of emoji tags (e.g., ['basketball', 'warning'])
+        dry_run: If True, log what would be sent but don't actually send
 
     Returns:
-        True if successful, False otherwise
+        True if successful (or dry_run), False otherwise
     """
     url = f"https://ntfy.sh/{topic}"
+
+    if dry_run:
+        logger.info(f"[DRY-RUN] Would send notification to {topic}:")
+        logger.info(f"  Title: {title}")
+        logger.info(f"  Priority: {priority}")
+        logger.info(f"  Tags: {tags}")
+        for line in message.split('\n'):
+            logger.info(f"  Message: {line}")
+        return True
 
     headers = {
         'Title': title,
@@ -312,16 +322,17 @@ def send_ntfy_notification(topic: str, title: str, message: str, priority: str =
         return False
 
 
-def send_change_notifications(changes: dict, ntfy_prefix: str, town_name: str) -> int:
+def send_change_notifications(changes: dict, ntfy_prefix: str, town_name: str, dry_run: bool = False) -> int:
     """Send notifications for all detected changes.
 
     Args:
         changes: Dict from detect_changes()
         ntfy_prefix: Prefix for ntfy topics (e.g., 'ssbball')
         town_name: Town name for notifications
+        dry_run: If True, log what would be sent but don't actually send
 
     Returns:
-        Number of notifications sent
+        Number of notifications sent (or would be sent in dry_run mode)
     """
     sent = 0
 
@@ -410,10 +421,37 @@ def send_change_notifications(changes: dict, ntfy_prefix: str, town_name: str) -
             title = f"{town_name} {team_key} Schedule Update"
             message = '\n'.join(messages)
 
-            if send_ntfy_notification(topic, title, message, priority=priority, tags=tags):
+            if send_ntfy_notification(topic, title, message, priority=priority, tags=tags, dry_run=dry_run):
                 sent += 1
 
     return sent
+
+
+def send_test_notification(ntfy_prefix: str, team_key: str, town_name: str) -> bool:
+    """Send a test notification to verify ntfy.sh setup.
+
+    Args:
+        ntfy_prefix: Prefix for ntfy topics (e.g., 'milton-basketball')
+        team_key: Team identifier (e.g., '5-m-red')
+        town_name: Town name for notifications
+
+    Returns:
+        True if successful, False otherwise
+    """
+    topic = f"{ntfy_prefix}-{team_key}".lower().replace(' ', '-')
+    title = f"{town_name} {team_key.upper()} - Test Notification"
+    message = (
+        "This is a test notification from the schedule system.\n"
+        "If you see this, notifications are working correctly!\n"
+        "\n"
+        "You will receive alerts when:\n"
+        "- Games are added or cancelled\n"
+        "- Game times or locations change\n"
+        "- Practices are added, cancelled, or modified"
+    )
+
+    logger.info(f"Sending test notification to {topic}")
+    return send_ntfy_notification(topic, title, message, priority='default', tags=['basketball', 'white_check_mark'])
 
 
 def get_season() -> str:
@@ -3842,6 +3880,8 @@ def main():
     parser.add_argument('--output', '-o', default='docs', help='Output directory for ICS files')
     parser.add_argument('--base-url', '-u', default='', help='Base URL for calendar links')
     parser.add_argument('--ntfy-topic', '-n', default='', help='ntfy.sh topic prefix for notifications (e.g., "ssbball")')
+    parser.add_argument('--dry-run', action='store_true', help='Detect changes and log notifications without sending them')
+    parser.add_argument('--test-notification', metavar='TEAM', help='Send a test notification to a specific team (e.g., "5-m-red")')
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -3963,6 +4003,24 @@ def main():
 
     state_path = output_dir / 'schedule_state.json'
     ntfy_topic = args.ntfy_topic or config.get('ntfy_topic', '')
+    dry_run = args.dry_run
+    test_team = args.test_notification
+
+    # Handle test notification mode
+    if test_team:
+        if not ntfy_topic:
+            logger.error("Cannot send test notification: no --ntfy-topic specified")
+        else:
+            logger.info(f"Sending test notification to team: {test_team}")
+            if send_test_notification(ntfy_topic, test_team, town_name):
+                logger.info("Test notification sent successfully!")
+            else:
+                logger.error("Failed to send test notification")
+        # Exit early - don't do full scrape for test mode
+        return
+
+    if dry_run:
+        logger.info("DRY-RUN MODE: Will detect changes but not send actual notifications")
 
     if ntfy_topic:
         logger.info(f"Notifications enabled with topic prefix: {ntfy_topic}")
@@ -3981,16 +4039,22 @@ def main():
                 logger.info(f"  - {len(changes['deleted'])} cancelled events")
                 logger.info(f"  - {len(changes['modified'])} modified events")
 
-                # Send notifications
-                sent = send_change_notifications(changes, ntfy_topic, town_name)
-                logger.info(f"Sent {sent} notifications")
+                # Send notifications (or log them in dry-run mode)
+                sent = send_change_notifications(changes, ntfy_topic, town_name, dry_run=dry_run)
+                if dry_run:
+                    logger.info(f"[DRY-RUN] Would have sent {sent} notifications")
+                else:
+                    logger.info(f"Sent {sent} notifications")
             else:
                 logger.info("No schedule changes detected")
         else:
             logger.info("First run - no previous state to compare against")
 
-        # Save current state for next run
-        save_current_state(state_path, all_games, all_practices)
+        # Save current state for next run (skip in dry-run to allow re-testing)
+        if not dry_run:
+            save_current_state(state_path, all_games, all_practices)
+        else:
+            logger.info("[DRY-RUN] Skipping state save to allow re-testing")
     else:
         logger.info("Notifications disabled (no --ntfy-topic specified)")
 

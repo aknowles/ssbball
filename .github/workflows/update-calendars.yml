@@ -9,8 +9,17 @@ on:
     - cron: '0 0-2 * * *'    # Hourly midnight - 2 AM UTC (7 - 9 PM ET)
     - cron: '0 7 * * *'      # 7 AM UTC = 2 AM ET (single overnight run, ~5 hours gap)
 
-  # Allow manual trigger
+  # Allow manual trigger with optional test modes
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry-run mode (detect changes but do not send notifications)'
+        type: boolean
+        default: false
+      test_team:
+        description: 'Send test notification to team (e.g., 5-m-red). Leave empty for normal run.'
+        type: string
+        default: ''
 
   # Run on push to main
   push:
@@ -63,7 +72,9 @@ jobs:
           python scraper.py \
             --config teams.json \
             --output docs \
-            --base-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+            --base-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" \
+            ${{ inputs.dry_run == true && '--dry-run' || '' }} \
+            ${{ inputs.test_team != '' && format('--test-notification {0}', inputs.test_team) || '' }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -73,6 +84,8 @@ jobs:
   deploy:
     needs: scrape
     runs-on: ubuntu-latest
+    # Skip deploy for test notifications (nothing to deploy)
+    if: ${{ inputs.test_team == '' || inputs.test_team == null }}
 
     environment:
       name: github-pages
