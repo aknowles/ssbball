@@ -81,6 +81,19 @@ def get_leagues(config: dict = None) -> dict:
     return leagues
 
 
+def ordinal(n) -> str:
+    """Return ordinal string for a number (1st, 2nd, 3rd, 4th, etc.)."""
+    try:
+        n = int(n)
+    except (ValueError, TypeError):
+        return str(n)
+    if 11 <= n % 100 <= 13:
+        suffix = 'th'
+    else:
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f"{n}{suffix}"
+
+
 # =============================================================================
 # Schedule Change Detection and Notifications
 # =============================================================================
@@ -1460,10 +1473,12 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         """Extract grade number from calendar."""
         cal_id = cal.get('id', '')
         cal_name = cal.get('name', '')
-        for g in ['3rd', '4th', '5th', '6th', '7th', '8th']:
+        # Check for proper ordinals (1st, 2nd, 3rd, 4th, etc.)
+        for g in ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']:
             if g in cal_id or g in cal_name:
-                return g.replace('th', '').replace('rd', '')
-        for g in ['3', '4', '5', '6', '7', '8']:
+                return g.replace('st', '').replace('nd', '').replace('rd', '').replace('th', '')
+        # Fallback for legacy data with incorrect ordinals (e.g., "3th")
+        for g in ['1', '2', '3', '4', '5', '6', '7', '8']:
             if f'-{g}th-' in cal_id or f' {g}th ' in cal_name:
                 return g
         return 'Other'
@@ -2023,7 +2038,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             if team_key not in seen_keys:
                 seen_keys.add(team_key)
                 topic = f"{ntfy_topic}-{team_key}".lower().replace(' ', '-')
-                label = f"{grade}th {gender_label} {color}"
+                label = f"{ordinal(grade)} {gender_label} {color}"
                 team_topics.append((topic, label, gender))
 
         # Sort by grade then gender then color
@@ -3876,8 +3891,8 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
         gender_name = gender_names.get(gender, gender)
         league_name = league_names.get(league, league)
 
-        team_id = f"{town_name.lower()}-{grade}th-{gender_name.lower()}-{color.lower()}-{league}".replace(' ', '-')
-        team_name = f"{town_name} {grade}th {gender_name} {color} ({league_name})"
+        team_id = f"{town_name.lower()}-{ordinal(grade)}-{gender_name.lower()}-{color.lower()}-{league}".replace(' ', '-')
+        team_name = f"{town_name} {ordinal(grade)} {gender_name} {color} ({league_name})"
         short_name = f"{grade}{gender[0]}-{color}"
 
         # Get standings for this team
@@ -3990,8 +4005,8 @@ def main():
             if len(group_teams) > 1:
                 gender_name = 'Boys' if gender == 'M' else 'Girls'
                 combined_calendars.append({
-                    'id': f"{town_name.lower()}-{grade}th-{gender_name.lower()}-{color.lower()}",
-                    'name': f"{town_name} {grade}th {gender_name} {color}",
+                    'id': f"{town_name.lower()}-{ordinal(grade)}-{gender_name.lower()}-{color.lower()}",
+                    'name': f"{town_name} {ordinal(grade)} {gender_name} {color}",
                     'description': 'All leagues combined',
                     'filter': {'grade': str(grade), 'gender': gender, 'color': color}
                 })
