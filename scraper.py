@@ -3007,7 +3007,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         /* Hidden elements (for filtering) */
         .team-group.hidden,
-        .games-row.hidden {{
+        .games-row.hidden,
+        .topic-item.hidden {{
             display: none;
         }}
 
