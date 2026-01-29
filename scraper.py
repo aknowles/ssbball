@@ -2002,26 +2002,29 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
     # Generate notifications section if ntfy_topic is configured
     if ntfy_topic:
-        # Build list of unique team topics from calendars (combined calendars only to avoid duplicates)
+        # Build list of unique team topics from all calendars, deduped by grade-gender-color
         team_topics = []
         seen_keys = set()
         for cal in calendars:
-            if cal.get('type') == 'combined':
-                cal_id = cal.get('id', '')
-                cal_name = cal.get('name', '')
-                gender = cal.get('gender', 'M')
+            cal_id = cal.get('id', '')
+            cal_name = cal.get('name', '')
+            gender = cal.get('gender', '') or 'M'  # Default to M if empty
 
-                # Extract grade and color from the name
-                grade = extract_grade(cal)
-                color = extract_color(cal)
+            # Extract grade and color from the calendar
+            grade = extract_grade(cal)
+            color = extract_color(cal)
 
-                team_key = f"{grade}-{gender}-{color}".lower()
-                if team_key not in seen_keys:
-                    seen_keys.add(team_key)
-                    topic = f"{ntfy_topic}-{team_key}".lower().replace(' ', '-')
-                    gender_label = 'Boys' if gender == 'M' else 'Girls'
-                    label = f"{grade}th {gender_label} {color}"
-                    team_topics.append((topic, label, gender))
+            # Skip if we can't determine the team identity
+            if not grade or grade == 'Other' or not color or color == 'Team':
+                continue
+
+            team_key = f"{grade}-{gender}-{color}".lower()
+            if team_key not in seen_keys:
+                seen_keys.add(team_key)
+                topic = f"{ntfy_topic}-{team_key}".lower().replace(' ', '-')
+                gender_label = 'Boys' if gender == 'M' else 'Girls'
+                label = f"{grade}th {gender_label} {color}"
+                team_topics.append((topic, label, gender))
 
         # Sort by grade then gender then color
         team_topics.sort(key=lambda x: (x[1][0], x[2], x[1]))
