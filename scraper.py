@@ -411,10 +411,19 @@ def send_change_notifications(changes: dict, ntfy_prefix: str, town_name: str, d
                 change_desc.append(f"location changed")
 
             change_info = ', '.join(change_desc)
-            if change['type'] == 'practice':
-                messages.append(f"CHANGED {event_type}: {change_info}")
+            # Include date in message when time didn't change (so user knows which game)
+            if change.get('time_changed'):
+                # Time change already includes the date
+                if change['type'] == 'practice':
+                    messages.append(f"CHANGED {event_type}: {change_info}")
+                else:
+                    messages.append(f"CHANGED {event_type} vs {opponent}: {change_info}")
             else:
-                messages.append(f"CHANGED {event_type} vs {opponent}: {change_info}")
+                # No time change, so include the date for context
+                if change['type'] == 'practice':
+                    messages.append(f"CHANGED {event_type} on {new_dt_str}: {change_info}")
+                else:
+                    messages.append(f"CHANGED {event_type} vs {opponent} on {new_dt_str}: {change_info}")
 
         if messages:
             # Create topic name: prefix-grade-gender-color (e.g., ssbball-5-m-red)
