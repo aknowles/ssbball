@@ -2063,7 +2063,15 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         <div class="notification-topics">
             <h3>Team Topics</h3>
             <p class="topic-instructions">Copy your team's topic and paste it in the ntfy app:</p>
-            <div class="topics-grid">
+            <div class="filter-bar topics-filter" role="group" aria-label="Filter topics">
+                <span class="filter-label">Show:</span>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all" data-target="topics" aria-pressed="true">Both</button>
+                    <button class="filter-btn" data-filter="M" data-target="topics" aria-pressed="false">Boys</button>
+                    <button class="filter-btn" data-filter="F" data-target="topics" aria-pressed="false">Girls</button>
+                </div>
+            </div>
+            <div class="topics-grid" id="topics-grid">
                 {topics_html}
             </div>
             <p class="topic-format"><strong>Topic format:</strong> <code>{ntfy_topic}-[grade]-[m/f]-[color]</code><br>
@@ -3668,6 +3676,17 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     row.classList.remove('hidden');
                 }} else {{
                     row.classList.add('hidden');
+                }}
+            }});
+
+            // Filter notification topics
+            const topicItems = document.querySelectorAll('.topic-item');
+            topicItems.forEach(item => {{
+                const gender = item.dataset.gender;
+                if (filter === 'all' || gender === filter) {{
+                    item.classList.remove('hidden');
+                }} else {{
+                    item.classList.add('hidden');
                 }}
             }});
 
