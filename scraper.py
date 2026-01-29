@@ -2003,26 +2003,26 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
     # Generate notifications section if ntfy_topic is configured
     if ntfy_topic:
         # Build list of unique team topics from all calendars, deduped by grade-gender-color
+        # Use same extraction logic as the working team groups section
         team_topics = []
         seen_keys = set()
         for cal in calendars:
-            cal_id = cal.get('id', '')
-            cal_name = cal.get('name', '')
-            gender = cal.get('gender', '') or 'M'  # Default to M if empty
-
-            # Extract grade and color from the calendar
+            # Use extract functions - same as the working team schedules code
             grade = extract_grade(cal)
+            gender_label = extract_gender(cal)  # Returns 'Boys' or 'Girls'
             color = extract_color(cal)
 
             # Skip if we can't determine the team identity
             if not grade or grade == 'Other' or not color or color == 'Team':
                 continue
 
+            # Convert gender label to code for data-gender attribute
+            gender = 'M' if gender_label == 'Boys' else 'F'
+
             team_key = f"{grade}-{gender}-{color}".lower()
             if team_key not in seen_keys:
                 seen_keys.add(team_key)
                 topic = f"{ntfy_topic}-{team_key}".lower().replace(' ', '-')
-                gender_label = 'Boys' if gender == 'M' else 'Girls'
                 label = f"{grade}th {gender_label} {color}"
                 team_topics.append((topic, label, gender))
 
@@ -3007,7 +3007,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         /* Hidden elements (for filtering) */
         .team-group.hidden,
-        .games-row.hidden {{
+        .games-row.hidden,
+        .topic-item.hidden {{
             display: none;
         }}
 
