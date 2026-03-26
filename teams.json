@@ -47,82 +47,22 @@
   },
   "practices": {
     "5-M-Red": {
-      "recurring": [
-        {
-          "day": "Tuesday",
-          "time": "18:00",
-          "duration": 60,
-          "location": "75 Edge Hill Rd, Milton, MA 02186",
-          "notes": "Cunningham Park Gym"
-        },
-        {
-          "day": "Thursday",
-          "time": "18:00",
-          "duration": 60,
-          "location": "75 Edge Hill Rd, Milton, MA 02186",
-          "notes": "Cunningham Park Gym"
-        }
-      ],
+      "recurring": [],
       "adhoc": [],
       "modifications": []
     },
     "5-M-White": {
-      "recurring": [
-        {
-          "day": "Saturday",
-          "time": "09:30",
-          "duration": 90,
-          "location": "55 Edge Hill Rd, Milton, MA 02186",
-          "notes": "Collicot Elementary School gym"
-        },
-        {
-          "day": "Tuesday",
-          "time": "18:15",
-          "duration": 90,
-          "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
-        }
-      ],
+      "recurring": [],
       "adhoc": [],
       "modifications": []
     },
     "6-M-Red": {
-      "recurring": [
-        {
-          "day": "Monday",
-          "time": "18:15",
-          "duration": 90,
-          "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
-        },
-        {
-          "day": "Wednesday",
-          "time": "19:30",
-          "duration": 90,
-          "location": "75 Edge Hill Rd, Milton, MA 02186",
-          "notes": "Cunningham Elementary School gym"
-        }
-      ],
+      "recurring": [],
       "adhoc": [],
       "modifications": []
     },
     "8-M-White": {
-      "recurring": [
-        {
-          "day": "Wednesday",
-          "time": "19:45",
-          "duration": 90,
-          "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
-        },
-        {
-          "day": "Thursday",
-          "time": "19:45",
-          "duration": 90,
-          "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
-        }
-      ],
+      "recurring": [],
       "adhoc": [],
       "modifications": []
     }
