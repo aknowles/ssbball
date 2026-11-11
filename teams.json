@@ -12,12 +12,8 @@
     "away": "Red"
   },
   "coaches": {
-    "4-M-Red": "Rist",
-    "5-M-Red": "Hurley",
-    "5-M-White": "Hynes",
-    "6-M-Red": "Balestracci",
-    "8-M-Red": "Dunne",
-    "8-M-White": "Sutphin"
+    "6-M-Red": "Hurley",
+    "6-M-White": "Deptula"
   },
   "season": {
     "start": "2026-01-01",
