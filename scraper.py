@@ -3675,6 +3675,16 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                My calendar shows "Calendar moved". What do I do?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Calendar links change every season, because each grade and color is a new group of players each year. Find your team above, subscribe to this season's calendar, then remove the old one (see the next question).</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
                 How do I unsubscribe or remove a calendar?
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
@@ -3685,6 +3695,36 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     <li><strong>Apple Calendar (Mac):</strong> Right-click the calendar in the sidebar → Unsubscribe</li>
                     <li><strong>Outlook:</strong> Right-click the calendar → Remove</li>
                 </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Why isn't my team listed?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>A team appears once its league has posted a schedule, or once we have its practice times. The leagues post at different times, so a team that plays in only one league may show up later than others. Check back, or look at the official league website.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Which calendar should I subscribe to?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>If your team has a ⭐ combined calendar, use that: it has every game from all leagues plus practices. The per-league calendars are for people who only want one league. Pick one or the other — subscribing to several calendars for the same team shows practices more than once.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Why did my schedule alerts stop?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Alert topics also change every season. Open the "Get Schedule Change Alerts" section above, copy this season's topic for your team into the ntfy app, and remove last season's. Alerts cover games and practices that are added, cancelled, or change time or location; they do not cover scores.</p>
             </div>
         </div>
 
