@@ -3629,7 +3629,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
     <section aria-labelledby="calendars-heading">
         <h2 id="calendars-heading">Team Calendars</h2>
-        <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-md);">Click a grade, then a team to see schedule and calendar links. ⭐ Combined calendars include all leagues.</p>
+        <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-md);">Click a grade, then a team to see schedule and calendar links. ⭐ Combined calendars include all leagues. Teams appear here once their league posts a schedule.</p>
 
         <div class="filter-bar" role="group" aria-label="Filter teams">
             <span class="filter-label">Show:</span>
@@ -4436,7 +4436,15 @@ def main():
 
     # Generate index.html
     coaches = config.get('coaches', {})
-    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games, coaches=coaches, all_games=all_games, ntfy_topic=ntfy_topic)
+    # List only teams with something on their calendar. Before a league posts
+    # its schedule it can still return last season's teams, which would fill
+    # the page (and the alert topics) with empty entries. Their .ics files
+    # are still written, so links work the moment a schedule appears.
+    listed_calendars = [c for c in calendar_info if c['games'] or c['practices']]
+    hidden = len(calendar_info) - len(listed_calendars)
+    if hidden:
+        logger.info(f"Hiding {hidden} calendars with no games or practices from the page")
+    index_html = generate_index_html(listed_calendars, base_url, town_name, include_nl_games, coaches=coaches, all_games=all_games, ntfy_topic=ntfy_topic)
     index_path = output_dir / 'index.html'
     index_path.write_text(index_html)
     logger.info(f"Wrote {index_path}")
