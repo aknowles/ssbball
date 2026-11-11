@@ -10,9 +10,10 @@ Usage:
     python rollover_season.py 2027 --apply      # Apply changes to teams.json
 
 The script calculates:
-- Season dates: January 1 to March 31 of the target year
+- Season dates: November 1 of the previous year to March 31 of the target year
 - Blackout dates:
-  - New Year's Day (January 1)
+  - Thanksgiving (4th Thursday in November, through Saturday)
+  - Winter Vacation (December 24 to January 1)
   - Martin Luther King Jr. Day (3rd Monday in January)
   - February Vacation (Presidents Day week - week containing 3rd Monday in February)
   - April Vacation (Patriots Day week - week containing 3rd Monday in April)
@@ -60,10 +61,11 @@ def get_vacation_week(holiday_date: date) -> tuple[date, date]:
 def generate_season_dates(year: int) -> dict:
     """Generate season start and end dates.
 
-    Basketball season typically runs January through March.
+    Practices start in November and games run December through March.
+    Adjust the start in teams.json if practices begin later.
     """
     return {
-        "start": f"{year}-01-01",
+        "start": f"{year - 1}-11-01",
         "end": f"{year}-03-31"
     }
 
@@ -72,19 +74,29 @@ def generate_blackout_dates(year: int) -> list[dict]:
     """Generate blackout dates for Massachusetts school calendar.
 
     Includes:
-    - New Year's Day (January 1)
+    - Thanksgiving (4th Thursday in November, through Saturday)
+    - Winter Vacation (December 24 to January 1)
     - Martin Luther King Jr. Day (3rd Monday in January)
     - February Vacation (Presidents Day week)
     - April Vacation (Patriots Day week)
+
+    These are estimates; check them against the school calendar.
     """
     blackouts = []
 
-    # New Year's Day
-    new_years = date(year, 1, 1)
+    # Thanksgiving (4th Thursday in November) through Saturday
+    thanksgiving = nth_weekday_of_month(year - 1, 11, 3, 4)  # 3 = Thursday
     blackouts.append({
-        "start": new_years.isoformat(),
-        "end": new_years.isoformat(),
-        "reason": "New Year's Day"
+        "start": thanksgiving.isoformat(),
+        "end": (thanksgiving + timedelta(days=2)).isoformat(),
+        "reason": "Thanksgiving"
+    })
+
+    # Winter vacation
+    blackouts.append({
+        "start": date(year - 1, 12, 24).isoformat(),
+        "end": date(year, 1, 1).isoformat(),
+        "reason": "Winter Vacation"
     })
 
     # Martin Luther King Jr. Day (3rd Monday in January)

@@ -1525,6 +1525,10 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
                 desc.append(f"Location: {game['location']}")
             if game.get('notes'):
                 desc.append(f"\nNote: {game['notes']}")
+            desc.append(
+                "\nPractice times are entered by hand, not pulled from the league, "
+                "and coaches may change or cancel them. Confirm with your coach."
+            )
         else:
             # Game description
             desc = [
@@ -3629,7 +3633,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
     <section aria-labelledby="calendars-heading">
         <h2 id="calendars-heading">Team Calendars</h2>
-        <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-md);">Click a grade, then a team to see schedule and calendar links. ⭐ Combined calendars include all leagues.</p>
+        <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-md);">Click a grade, then a team to see schedule and calendar links. ⭐ Combined calendars include all leagues. Teams appear here once their league posts a schedule.</p>
 
         <div class="filter-bar" role="group" aria-label="Filter teams">
             <span class="filter-label">Show:</span>
@@ -3662,11 +3666,22 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             <li>{games_included_note}</li>
             <li>Schedule data is sourced from league websites. Always verify with official league sources.</li>
             <li>Game times and locations may change — check for updates before traveling.</li>
+            <li>Practices are entered by hand, not pulled from the league, and only for teams that have sent us their schedule. Coaches may change or cancel them at short notice — confirm with your coach.</li>
         </ul>
     </section>
 
     <section class="faq-section" aria-labelledby="faq-heading">
         <h2 id="faq-heading">Frequently Asked Questions</h2>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                My calendar shows "Calendar moved". What do I do?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Calendar links change every season, because each grade and color is a new group of players each year. Find your team above, subscribe to this season's calendar, then remove the old one (see the next question).</p>
+            </div>
+        </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
@@ -3680,6 +3695,36 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                     <li><strong>Apple Calendar (Mac):</strong> Right-click the calendar in the sidebar → Unsubscribe</li>
                     <li><strong>Outlook:</strong> Right-click the calendar → Remove</li>
                 </ul>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Why isn't my team listed?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>A team appears once its league has posted a schedule, or once we have its practice times. The leagues post at different times, so a team that plays in only one league may show up later than others. Check back, or look at the official league website.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Which calendar should I subscribe to?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>If your team has a ⭐ combined calendar, use that: it has every game from all leagues plus practices. The per-league calendars are for people who only want one league. Pick one or the other — subscribing to several calendars for the same team shows practices more than once.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Why did my schedule alerts stop?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Alert topics also change every season. Open the "Get Schedule Change Alerts" section above, copy this season's topic for your team into the ntfy app, and remove last season's. Alerts cover games and practices that are added, cancelled, or change time or location; they do not cover scores.</p>
             </div>
         </div>
 
@@ -4436,7 +4481,15 @@ def main():
 
     # Generate index.html
     coaches = config.get('coaches', {})
-    index_html = generate_index_html(calendar_info, base_url, town_name, include_nl_games, coaches=coaches, all_games=all_games, ntfy_topic=ntfy_topic)
+    # List only teams with something on their calendar. Before a league posts
+    # its schedule it can still return last season's teams, which would fill
+    # the page (and the alert topics) with empty entries. Their .ics files
+    # are still written, so links work the moment a schedule appears.
+    listed_calendars = [c for c in calendar_info if c['games'] or c['practices']]
+    hidden = len(calendar_info) - len(listed_calendars)
+    if hidden:
+        logger.info(f"Hiding {hidden} calendars with no games or practices from the page")
+    index_html = generate_index_html(listed_calendars, base_url, town_name, include_nl_games, coaches=coaches, all_games=all_games, ntfy_topic=ntfy_topic)
     index_path = output_dir / 'index.html'
     index_path.write_text(index_html)
     logger.info(f"Wrote {index_path}")

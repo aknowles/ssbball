@@ -41,6 +41,7 @@ permissions:
   pages: write
   id-token: write
   issues: write
+  actions: write
 
 # Allow only one concurrent deployment
 concurrency:
@@ -87,6 +88,15 @@ jobs:
             --output docs \
             --base-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" \
             "${args[@]}"
+
+      # GitHub disables scheduled workflows after 60 days without repository
+      # activity. Re-enabling through the API resets that timer.
+      - name: Keep scheduled workflow enabled
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/update-calendars.yml/enable"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
