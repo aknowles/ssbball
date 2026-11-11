@@ -20,6 +20,8 @@ import hashlib
 import json
 import logging
 import re
+import sys
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -139,6 +141,24 @@ def game_to_state(game: dict) -> dict:
     }
 
 
+def is_past_event(state: dict) -> bool:
+    """Return True if a stored event's datetime is already in the past.
+
+    Past events dropping out of the schedule (e.g. last season's games when a
+    new season starts) are not cancellations anyone needs to hear about.
+    """
+    dt_str = state.get('datetime')
+    if not dt_str:
+        return False
+    try:
+        dt = datetime.fromisoformat(dt_str)
+    except (ValueError, TypeError):
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=EASTERN)
+    return dt < datetime.now(EASTERN)
+
+
 def load_previous_state(state_path: Path) -> dict:
     """Load the previous schedule state from JSON file."""
     if not state_path.exists():
@@ -230,7 +250,7 @@ def detect_changes(previous_state: dict, current_games: list[dict], current_prac
 
     # Check for deleted games
     for key, prev in prev_games.items():
-        if key not in curr_games:
+        if key not in curr_games and not is_past_event(prev):
             team_key = f"{prev.get('grade')}-{prev.get('gender')}-{prev.get('color')}"
             changes['deleted'].append({
                 'type': 'game',
@@ -265,7 +285,7 @@ def detect_changes(previous_state: dict, current_games: list[dict], current_prac
                 })
 
     for key, prev in prev_practices.items():
-        if key not in curr_practices:
+        if key not in curr_practices and not is_past_event(prev):
             team_key = f"{prev.get('grade')}-{prev.get('gender')}-{prev.get('color')}"
             changes['deleted'].append({
                 'type': 'practice',
@@ -791,6 +811,11 @@ def fetch_url(url: str, headers: dict = None) -> str:
         return ""
 
 
+# Count of API requests that failed after retries. A run with failures has
+# incomplete data, so main() aborts instead of publishing it.
+API_FAILURES = 0
+
+
 def fetch_api(url: str, data: dict, client_id: str) -> dict:
     """Make a POST request to the API."""
     league = LEAGUES.get(client_id, LEAGUES['metrowbb'])
@@ -805,15 +830,23 @@ def fetch_api(url: str, data: dict, client_id: str) -> dict:
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
 
-    req = urllib.request.Request(url, data=encoded_data, headers=headers)
+    global API_FAILURES
+    attempts = 3
+    for attempt in range(1, attempts + 1):
+        req = urllib.request.Request(url, data=encoded_data, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                content = response.read().decode('utf-8')
+                return json.loads(content)
+        except Exception as e:
+            if attempt < attempts:
+                logger.warning(f"API request failed (attempt {attempt}/{attempts}), retrying: {e}")
+                time.sleep(2 * attempt)
+            else:
+                logger.error(f"API request failed: {e}")
 
-    try:
-        with urllib.request.urlopen(req, timeout=30) as response:
-            content = response.read().decode('utf-8')
-            return json.loads(content)
-    except Exception as e:
-        logger.error(f"API request failed: {e}")
-        return {}
+    API_FAILURES += 1
+    return {}
 
 
 def parse_towns_from_html(html: str) -> dict:
@@ -2060,7 +2093,8 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         notifications_section = f'''
     <section class="notifications-section" aria-labelledby="notifications-heading">
-        <h2 id="notifications-heading">Get Schedule Change Alerts</h2>
+        <details class="notifications-details">
+        <summary><h2 id="notifications-heading">Get Schedule Change Alerts</h2></summary>
         <p>Want to be notified when games are added, cancelled, or rescheduled? Get push notifications on your phone!</p>
 
         <div class="notification-steps">
@@ -2104,6 +2138,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             <p class="topic-format"><strong>Topic format:</strong> <code>{ntfy_topic}-[grade]-[m/f]-[color]</code><br>
             <span class="topic-example">Example: {ntfy_topic}-5-m-red for 5th grade Boys Red</span></p>
         </div>
+        </details>
     </section>'''
     else:
         notifications_section = ''
@@ -3084,9 +3119,44 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         }}
 
         .notifications-section h2 {{
-            margin-top: 0;
+            margin: 0;
+            padding: 0;
             border: none;
-            display: block;
+            display: inline;
+        }}
+
+        .notifications-details > summary {{
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--spacing-md);
+        }}
+
+        .notifications-details > summary::-webkit-details-marker {{
+            display: none;
+        }}
+
+        .notifications-details > summary::after {{
+            content: '▼';
+            font-size: 0.8em;
+            color: var(--color-text-secondary);
+            transition: transform 0.2s ease;
+        }}
+
+        .notifications-details[open] > summary::after {{
+            transform: rotate(180deg);
+        }}
+
+        .notifications-details[open] > summary {{
+            margin-bottom: var(--spacing-md);
+        }}
+
+        .notifications-details > summary:focus-visible {{
+            outline: 2px solid var(--color-accent, currentColor);
+            outline-offset: 4px;
+            border-radius: var(--radius-sm, 4px);
         }}
 
         .notifications-section p {{
@@ -4019,6 +4089,29 @@ def main():
                     'description': 'All leagues combined',
                     'filter': {'grade': str(grade), 'gender': gender, 'color': color}
                 })
+
+    # Abort on incomplete data. Publishing it would drop calendars from the
+    # site and notify parents that every missing game was cancelled. Exiting
+    # non-zero skips the deploy, so the last good site stays up.
+    if API_FAILURES:
+        logger.error(f"{API_FAILURES} league API request(s) failed; aborting without publishing or notifying")
+        sys.exit(1)
+
+    # Standings are looked up by division, not season, so before a league
+    # rolls over they still return last season's final records. Only show a
+    # record for a team that has actually played a game this season.
+    now = datetime.now(EASTERN)
+    for tc in team_configs:
+        has_played = any(
+            hasattr(g.get('datetime'), 'tzinfo') and g['datetime'] < now
+            for g in all_games
+            if g.get('league') == tc.get('league') and
+               g.get('grade') == tc.get('grade') and
+               g.get('gender') == tc.get('gender') and
+               g.get('color') == tc.get('color')
+        )
+        if not has_played:
+            tc['wins'] = tc['losses'] = tc['ties'] = tc['rank'] = 0
 
     # Generate practice events for teams with configured practices
     all_practices = []
