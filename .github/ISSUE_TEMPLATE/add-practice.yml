@@ -22,7 +22,7 @@ body:
     attributes:
       label: Practice Date
       description: "Date of the practice (YYYY-MM-DD format)"
-      placeholder: "2025-01-15"
+      placeholder: "2027-01-15"
     validations:
       required: true
 

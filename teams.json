@@ -1,8 +1,21 @@
 {
   "town_name": "Milton",
-  "leagues": ["ssybl", "metrowbb"],
-  "grades": [3, 4, 5, 6, 7, 8],
-  "genders": ["M", "F"],
+  "leagues": [
+    "ssybl",
+    "metrowbb"
+  ],
+  "grades": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "genders": [
+    "M",
+    "F"
+  ],
   "colors": [],
   "include_nl_games": true,
   "base_url": "https://aknowles.github.io/ssbball",
@@ -16,49 +29,67 @@
     "6-M-White": "Deptula"
   },
   "season": {
-    "start": "2026-01-01",
-    "end": "2026-03-31",
+    "start": "2026-11-11",
+    "end": "2027-03-31",
     "blackout_dates": [
       {
-        "start": "2026-01-01",
-        "end": "2026-01-01",
-        "reason": "New Year's Day"
+        "start": "2026-11-26",
+        "end": "2026-11-28",
+        "reason": "Thanksgiving"
       },
       {
-        "start": "2026-01-19",
-        "end": "2026-01-19",
+        "start": "2026-12-24",
+        "end": "2027-01-01",
+        "reason": "Winter Vacation"
+      },
+      {
+        "start": "2027-01-18",
+        "end": "2027-01-18",
         "reason": "Martin Luther King Jr. Day"
       },
       {
-        "start": "2026-02-16",
-        "end": "2026-02-20",
+        "start": "2027-02-15",
+        "end": "2027-02-19",
         "reason": "February Vacation (Presidents Day Week)"
       },
       {
-        "start": "2026-04-20",
-        "end": "2026-04-24",
+        "start": "2027-04-19",
+        "end": "2027-04-23",
         "reason": "April Vacation (Patriots Day Week)"
       }
     ]
   },
   "practices": {
-    "5-M-Red": {
-      "recurring": [],
-      "adhoc": [],
-      "modifications": []
-    },
-    "5-M-White": {
-      "recurring": [],
+    "6-M-White": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "11:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
       "adhoc": [],
       "modifications": []
     },
     "6-M-Red": {
-      "recurring": [],
-      "adhoc": [],
-      "modifications": []
-    },
-    "8-M-White": {
-      "recurring": [],
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
       "adhoc": [],
       "modifications": []
     }

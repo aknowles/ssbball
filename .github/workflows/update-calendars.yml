@@ -32,6 +32,7 @@ on:
     paths:
       - 'teams.json'
       - 'scraper.py'
+      - 'requirements.txt'
       - '.github/workflows/update-calendars.yml'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -52,16 +53,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
       - name: Install Python dependencies
         run: |
-          pip install icalendar
+          pip install -r requirements.txt
 
       - name: Fetch previous schedule state
         run: |
@@ -72,17 +73,23 @@ jobs:
             -o docs/schedule_state.json || echo "No previous state found (first run or state not yet deployed)"
 
       - name: Run scraper
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          TEST_TEAM: ${{ inputs.test_team }}
+          NOTIFICATION_MESSAGE: ${{ inputs.notification_message }}
         run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ -n "$TEST_TEAM" ]; then args+=(--test-notification "$TEST_TEAM"); fi
+          if [ -n "$NOTIFICATION_MESSAGE" ]; then args+=(--notification-message "$NOTIFICATION_MESSAGE"); fi
           python scraper.py \
             --config teams.json \
             --output docs \
             --base-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" \
-            ${{ inputs.dry_run == true && '--dry-run' || '' }} \
-            ${{ inputs.test_team != '' && format('--test-notification {0}', inputs.test_team) || '' }} \
-            ${{ inputs.notification_message != '' && format('--notification-message "{0}"', inputs.notification_message) || '' }}
+            "${args[@]}"
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: docs
 
@@ -98,11 +105,11 @@ jobs:
 
     steps:
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v6
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   notify-failure:
     needs: [scrape, deploy]
@@ -110,7 +117,7 @@ jobs:
     if: failure()
     steps:
       - name: Create issue on failure
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = 'Workflow failed: Update Basketball Calendars';
