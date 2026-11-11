@@ -1525,6 +1525,10 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
                 desc.append(f"Location: {game['location']}")
             if game.get('notes'):
                 desc.append(f"\nNote: {game['notes']}")
+            desc.append(
+                "\nPractice times are entered by hand, not pulled from the league, "
+                "and coaches may change or cancel them. Confirm with your coach."
+            )
         else:
             # Game description
             desc = [
@@ -3662,6 +3666,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             <li>{games_included_note}</li>
             <li>Schedule data is sourced from league websites. Always verify with official league sources.</li>
             <li>Game times and locations may change — check for updates before traveling.</li>
+            <li>Practices are entered by hand, not pulled from the league, and only for teams that have sent us their schedule. Coaches may change or cancel them at short notice — confirm with your coach.</li>
         </ul>
     </section>
 
