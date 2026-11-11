@@ -8,6 +8,10 @@ Visit the GitHub Pages site to get subscription URLs:
 
 **https://aknowles.github.io/ssbball**
 
+### Resubscribe each season
+
+Calendar links and notification topics include the season, for example `milton-2026-27-6th-boys-red.ics` and `milton-basketball-2026-27-6-m-red`. A grade and color is a different group of kids every year, so subscriptions do not carry over: subscribe again at the start of each season. Links from a previous season show a single "Calendar moved" event pointing back to the site.
+
 ## How It Works
 
 1. **GitHub Actions** runs hourly during game hours (6 AM - 9 PM ET)

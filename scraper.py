@@ -17,6 +17,7 @@ Usage:
 
 import argparse
 import hashlib
+import html
 import json
 import logging
 import re
@@ -81,6 +82,25 @@ def get_leagues(config: dict = None) -> dict:
                 'origin': origin
             }
     return leagues
+
+
+def slugify(value: str) -> str:
+    """Reduce text to a lowercase [a-z0-9-] slug, safe for filenames and URLs."""
+    return re.sub(r'[^a-z0-9]+', '-', str(value).lower()).strip('-')
+
+
+def escape_html(value):
+    """HTML-escape strings, recursing into lists and dict values.
+
+    Non-string values (numbers, datetimes, None) pass through unchanged.
+    """
+    if isinstance(value, str):
+        return html.escape(value, quote=True)
+    if isinstance(value, (list, tuple)):
+        return [escape_html(v) for v in value]
+    if isinstance(value, dict):
+        return {k: escape_html(v) for k, v in value.items()}
+    return value
 
 
 def ordinal(n) -> str:
@@ -384,7 +404,16 @@ def send_change_notifications(changes: dict, ntfy_prefix: str, town_name: str, d
         # Build notification message
         messages = []
 
+        # A whole recurring schedule being added would list every date; one
+        # summary line is enough.
+        new_practices = [c for c in team_changes['new'] if c['type'] == 'practice']
+        summarize_practices = len(new_practices) > 5
+        if summarize_practices:
+            messages.append(f"NEW Practices: {len(new_practices)} added - see your calendar for dates")
+
         for change in team_changes['new']:
+            if summarize_practices and change['type'] == 'practice':
+                continue
             event = change['event']
             event_type = 'Practice' if change['type'] == 'practice' else 'Game'
             dt = event.get('datetime')
@@ -515,6 +544,66 @@ def get_season() -> str:
     if now.month >= 8:
         return str(now.year + 1)
     return str(now.year)
+
+
+def get_season_label(offset: int = 0) -> str:
+    """Human-readable season, e.g. '2026-27'. Offset -1 gives the previous one.
+
+    Used in calendar URLs and notification topics so that each season has its
+    own subscriptions: a grade/color team is a different group of kids every
+    year, and last year's families should not inherit this year's schedule.
+    """
+    end_year = int(get_season()) + offset
+    return f"{end_year - 1}-{end_year % 100:02d}"
+
+
+def write_moved_calendars(output_dir: Path, calendar_id: str, calendar_name: str, page_url: str) -> None:
+    """Publish 'calendar moved' notices at the URLs this calendar had before.
+
+    Covers the pre-season-label URL (e.g. milton-6th-boys-red.ics) and last
+    season's URL, so stale subscriptions explain themselves instead of
+    silently showing another team or going dead.
+    """
+    label = get_season_label()
+    if f"-{label}-" not in calendar_id:
+        return
+    old_ids = {
+        calendar_id.replace(f"-{label}-", "-", 1),
+        calendar_id.replace(f"-{label}-", f"-{get_season_label(-1)}-", 1),
+    }
+    for old_id in old_ids:
+        (output_dir / f"{old_id}.ics").write_bytes(generate_moved_ical(calendar_name, old_id, page_url))
+
+
+def generate_moved_ical(calendar_name: str, calendar_id: str, page_url: str) -> bytes:
+    """Calendar published at a previous season's URL, telling subscribers to resubscribe.
+
+    Holds a single all-day event on today's date, so it stays visible until
+    the subscriber replaces the subscription.
+    """
+    cal = Calendar()
+    cal.add('prodid', '-//Basketball Schedule Scraper//EN')
+    cal.add('version', '2.0')
+    cal.add('calscale', 'GREGORIAN')
+    cal.add('method', 'PUBLISH')
+    cal.add('x-wr-calname', f"{calendar_name} (moved)")
+    cal.add('x-wr-timezone', 'America/New_York')
+
+    today = datetime.now(EASTERN).date()
+    event = Event()
+    event.add('uid', f'moved@{calendar_id}')
+    event.add('summary', f"🏀 Calendar moved - resubscribe for {get_season_label()}")
+    event.add('description',
+              f"This calendar link was for a previous season and no longer updates.\n\n"
+              f"Get this season's calendar for your team at {page_url}\n\n"
+              f"Then remove this old subscription.")
+    event.add('url', page_url)
+    event.add('dtstart', today)
+    event.add('dtend', today + timedelta(days=1))
+    event.add('dtstamp', datetime.now(EASTERN))
+    event.add('transp', 'TRANSPARENT')
+    cal.add_component(event)
+    return cal.to_ical()
 
 
 # Day name to weekday number mapping
@@ -1507,8 +1596,15 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         all_games: Optional list of all game dicts for schedule display
         ntfy_topic: Optional ntfy.sh topic prefix for push notifications
     """
-    coaches = coaches or {}
-    all_games = all_games or []
+    # Everything below is interpolated into HTML. Team names, opponents and
+    # locations come from league websites, and coaches/practices from config
+    # that outsiders can request changes to, so escape it all up front.
+    calendars = escape_html(calendars)
+    coaches = escape_html(coaches or {})
+    all_games = escape_html(all_games or [])
+    base_url = escape_html(base_url)
+    town_name = escape_html(town_name)
+    ntfy_topic = escape_html(ntfy_topic)
     now = datetime.now(EASTERN).strftime('%Y-%m-%d %H:%M %Z')
 
     def extract_grade(cal):
@@ -3970,7 +4066,8 @@ def discover_and_fetch_teams(config: dict) -> tuple[list[dict], list[dict]]:
         gender_name = gender_names.get(gender, gender)
         league_name = league_names.get(league, league)
 
-        team_id = f"{town_name.lower()}-{ordinal(grade)}-{gender_name.lower()}-{color.lower()}-{league}".replace(' ', '-')
+        team_slug = slugify(f"{ordinal(grade)}-{gender_name}-{color}-{league}")
+        team_id = f"{slugify(town_name)}-{get_season_label()}-{team_slug}"
         team_name = f"{town_name} {ordinal(grade)} {gender_name} {color} ({league_name})"
         short_name = f"{grade}{gender[0]}-{color}"
 
@@ -4026,6 +4123,10 @@ def main():
 
     # Handle test notification / ad hoc message mode early (no scraping needed)
     ntfy_topic = args.ntfy_topic or config.get('ntfy_topic', '')
+    if ntfy_topic:
+        # Topics are per season for the same reason calendar URLs are: a
+        # grade/color team is a different group of kids each year.
+        ntfy_topic = f"{ntfy_topic}-{get_season_label()}"
     test_team = args.test_notification
     if test_team:
         if not ntfy_topic:
@@ -4084,7 +4185,7 @@ def main():
             if len(group_teams) > 1:
                 gender_name = 'Boys' if gender == 'M' else 'Girls'
                 combined_calendars.append({
-                    'id': f"{town_name.lower()}-{ordinal(grade)}-{gender_name.lower()}-{color.lower()}",
+                    'id': f"{slugify(town_name)}-{get_season_label()}-" + slugify(f"{ordinal(grade)}-{gender_name}-{color}"),
                     'name': f"{town_name} {ordinal(grade)} {gender_name} {color}",
                     'description': 'All leagues combined',
                     'filter': {'grade': str(grade), 'gender': gender, 'color': color}
@@ -4238,6 +4339,7 @@ def main():
         ical_data = generate_ical(all_events, team_name, team_id)
         ics_path = output_dir / f"{team_id}.ics"
         ics_path.write_bytes(ical_data)
+        write_moved_calendars(output_dir, team_id, team_name, base_url)
         logger.info(f"Wrote {ics_path} with {len(team_games)} games and {len(team_practices)} practices")
 
         calendar_info.append({
@@ -4289,6 +4391,7 @@ def main():
         ical_data = generate_ical(all_events, combo_name, combo_id)
         ics_path = output_dir / f"{combo_id}.ics"
         ics_path.write_bytes(ical_data)
+        write_moved_calendars(output_dir, combo_id, combo_name, base_url)
         logger.info(f"Wrote {ics_path} with {len(filtered_games)} games and {len(filtered_practices)} practices")
 
         # Get gender from filter
