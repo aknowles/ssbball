@@ -883,6 +883,78 @@ def generate_practice_events(config: dict, team_key: str, team_name: str, short_
     return events
 
 
+def generate_manual_games(config: dict, team_configs: list[dict]) -> list[dict]:
+    """Build game events from the hand-entered `manual_games` config section.
+
+    For games the league sites don't list (e.g. outside tournaments). Keyed by
+    team (grade-gender-color), each entry needs date, time and opponent.
+    """
+    manual_config = config.get('manual_games', {})
+    town_name = config.get('town_name', 'Milton')
+    games = []
+
+    team_lookup = {}
+    for tc in team_configs:
+        key = f"{tc.get('grade')}-{tc.get('gender')}-{tc.get('color')}"
+        team_lookup.setdefault(key.lower(), tc)
+
+    for team_key, entries in manual_config.items():
+        parts = team_key.split('-')
+        if len(parts) < 3:
+            logger.warning(f"Invalid manual_games team key: {team_key}")
+            continue
+        grade, gender, color = parts[0], parts[1], '-'.join(parts[2:])
+
+        tc = team_lookup.get(team_key.lower())
+        if tc:
+            team_name = tc.get('team_name', team_key)
+            short_name = tc.get('short_name', team_key)
+            color = tc.get('color', color)
+        else:
+            team_name = f"{town_name} {team_key}"
+            short_name = team_key
+
+        for entry in entries:
+            date_str = entry.get('date')
+            time_str = entry.get('time')
+            opponent = str(entry.get('opponent', '')).strip() or 'TBD'
+            try:
+                game_dt = datetime.strptime(f"{date_str} {time_str}", '%Y-%m-%d %H:%M').replace(tzinfo=EASTERN)
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid manual game date/time for {team_key}: {date_str} {time_str}")
+                continue
+
+            home_away = str(entry.get('home_away', '')).strip()
+            game = {
+                'datetime': game_dt,
+                'opponent': opponent,
+                'location': entry.get('location', ''),
+                'directions': '',
+                'team_name': team_name,
+                'short_name': short_name,
+                'game_type': home_away,
+                'league': entry.get('league', 'Tournament'),
+                'grade': str(grade),
+                'gender': gender,
+                'color': color,
+                'is_tournament': entry.get('tournament', True),
+                # Home/away is usually unknown for outside tournaments, so
+                # only suggest a jersey when it was entered.
+                'jerseys': config.get('jerseys', {}) if home_away else {},
+                'team_score': '',
+                'opponent_score': '',
+                'won_lost': '',
+                'notes': entry.get('notes', ''),
+                'manual': True
+            }
+            if entry.get('duration'):
+                game['duration'] = int(entry['duration'])
+            games.append(game)
+            logger.info(f"Manual game for {team_key}: {game_dt.strftime('%b %d %I:%M%p')} vs {opponent}")
+
+    return games
+
+
 def fetch_url(url: str, headers: dict = None) -> str:
     """Fetch a URL and return content."""
     default_headers = {
@@ -1435,7 +1507,8 @@ def dedupe_games(games: list[dict]) -> list[dict]:
     """
     # Sort so league games come first (is_tournament=False before True)
     # This ensures league games are kept when duplicates are found
-    sorted_games = sorted(games, key=lambda g: (g.get('is_tournament', False), g['datetime']))
+    # (hand-entered manual games sort last, so a league listing wins)
+    sorted_games = sorted(games, key=lambda g: (g.get('is_tournament', False), bool(g.get('manual')), g['datetime']))
 
     seen = {}  # key -> game (keep first = league game if available)
     for game in sorted_games:
@@ -1558,6 +1631,8 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
                     desc.append(f"Jersey: {jersey_color}")
             if game.get('directions'):
                 desc.append(f"\nDirections: {game['directions']}")
+            if game.get('notes'):
+                desc.append(f"\nNote: {game['notes']}")
 
         event.add('description', '\n'.join(desc))
         event.add('dtstamp', datetime.now(EASTERN))
@@ -4243,6 +4318,12 @@ def main():
         logger.error(f"{API_FAILURES} league API request(s) failed; aborting without publishing or notifying")
         sys.exit(1)
 
+    # Add hand-entered games (e.g. tournaments the league sites don't list)
+    manual_games = generate_manual_games(config, team_configs)
+    if manual_games:
+        logger.info(f"Added {len(manual_games)} manual games")
+        all_games.extend(manual_games)
+
     # Standings are looked up by division, not season, so before a league
     # rolls over they still return last season's final records. Only show a
     # record for a team that has actually played a game this season.
@@ -4373,7 +4454,14 @@ def main():
                         (g.get('grade') == team_config.get('grade') and
                          g.get('league') == team_config.get('league') and
                          g.get('gender') == team_config.get('gender') and
+                         g.get('color') == team_config.get('color')) or
+                        (g.get('manual') and
+                         str(g.get('grade')) == str(team_config.get('grade')) and
+                         g.get('gender') == team_config.get('gender') and
                          g.get('color') == team_config.get('color'))]
+        # A manual game may duplicate one the league also lists
+        if any(g.get('manual') for g in team_games):
+            team_games = dedupe_games(team_games)
 
         # Add practices for this team
         team_key = f"{team_config.get('grade')}-{team_config.get('gender')}-{team_config.get('color')}"
