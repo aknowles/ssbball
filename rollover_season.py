@@ -221,6 +221,9 @@ def main():
                 if not args.keep_modifications:
                     schedule["modifications"] = []
 
+        # Manual games are date-specific, so they never carry over
+        had_manual_games = bool(config.pop("manual_games", None))
+
         # Write updated config
         with open(args.config, "w") as f:
             json.dump(config, f, indent=2)
@@ -231,6 +234,8 @@ def main():
             print("  - Cleared adhoc practices")
         if not args.keep_modifications:
             print("  - Cleared modifications")
+        if had_manual_games:
+            print("  - Cleared manual games")
     else:
         print("Preview mode - no changes made.")
         print(f"Run with --apply to update {args.config}")

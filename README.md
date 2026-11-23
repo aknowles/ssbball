@@ -146,6 +146,18 @@ Add recurring practice schedules that appear in team calendars alongside games:
 - `adhoc` — One-off practices: `{"date": "2026-02-15", "time": "10:00", "duration": 60, "location": "..."}`
 - `modifications` — Cancel or change specific dates (see below)
 
+**Manual games:** Games the league sites don't list (e.g. outside tournaments) can be added by hand under a top-level `manual_games` key, by team:
+
+```json
+"manual_games": {
+  "6-M-White": [
+    {"date": "2026-11-27", "time": "17:45", "opponent": "Cranston", "location": "Mass Premier Courts, 29 Green St, Foxborough, MA 02035", "notes": "A division"}
+  ]
+}
+```
+
+`date`, `time` (24h) and `opponent` are required. Optional: `location`, `notes`, `duration` (minutes, default 60), `home_away` (`"Home"`/`"Away"`), `tournament` (default `true`, shows 🏆). They appear in the team's calendars and on the page, trigger change alerts, and are dropped if a league lists the same game at the same time. `rollover_season.py --apply` clears them.
+
 **Automatic skipping:** Recurring practices are automatically skipped when they:
 - Fall during a blackout period (school vacations)
 - Conflict with a scheduled game (within 1 hour before/after)
