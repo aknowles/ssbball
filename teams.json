@@ -124,6 +124,199 @@
     ]
   },
   "practices": {
+    "8-M-Red": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-M-White": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-M-Black": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-M-Silver": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-M-Gray": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "7-M-Red": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Wednesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "7-M-White": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Wednesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "7-M-Black": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "7-M-Silver": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "6-M-Red": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Wednesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
     "6-M-White": {
       "recurring": [
         {
@@ -144,7 +337,407 @@
       "adhoc": [],
       "modifications": []
     },
-    "6-M-Red": {
+    "6-M-Silver": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "11:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "6-M-Black": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "12:30",
+          "duration": 90,
+          "location": "187 Blue Hills Pkwy, Milton, MA 02186",
+          "notes": "Tucker Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "6-M-Gray": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "12:30",
+          "duration": 90,
+          "location": "187 Blue Hills Pkwy, Milton, MA 02186",
+          "notes": "Tucker Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "5-M-Red": {
+      "recurring": [
+        {
+          "day": "Thursday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "187 Blue Hills Pkwy, Milton, MA 02186",
+          "notes": "Tucker Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "5-M-White": {
+      "recurring": [
+        {
+          "day": "Thursday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "187 Blue Hills Pkwy, Milton, MA 02186",
+          "notes": "Tucker Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "5-M-Black": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "5-M-Silver": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-M-Red": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "08:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-M-Black": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "08:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-M-Silver": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "11:00",
+          "duration": 90,
+          "location": "187 Blue Hills Pkwy, Milton, MA 02186",
+          "notes": "Tucker Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-M-White": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "11:00",
+          "duration": 90,
+          "location": "187 Blue Hills Pkwy, Milton, MA 02186",
+          "notes": "Tucker Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-M-Gold": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "08:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-M-Gray": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "08:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-F-Red": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-F-White": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-F-Black": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "8-F-Silver": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "19:45",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "19:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "7-F-Red": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "7-F-White": {
+      "recurring": [
+        {
+          "day": "Monday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "12:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "7-F-Silver": {
+      "recurring": [
+        {
+          "day": "Thursday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "12:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "6-F-Red": {
       "recurring": [
         {
           "day": "Tuesday",
@@ -152,6 +745,193 @@
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
           "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "6-F-White": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Thursday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "6-F-Black": {
+      "recurring": [
+        {
+          "day": "Thursday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "12:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "6-F-Silver": {
+      "recurring": [
+        {
+          "day": "Thursday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "12:30",
+          "duration": 90,
+          "location": "55 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Collicot Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "5-F-Red": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "11:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "5-F-White": {
+      "recurring": [
+        {
+          "day": "Tuesday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "11:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-F-Red": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-F-Black": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "18:15",
+          "duration": 90,
+          "location": "170 Centre St, Milton, MA 02186",
+          "notes": "Milton Academy ACC Gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "08:00",
+          "duration": 90,
+          "location": "187 Blue Hills Pkwy, Milton, MA 02186",
+          "notes": "Tucker Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-F-White": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "09:30",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        }
+      ],
+      "adhoc": [],
+      "modifications": []
+    },
+    "4-F-Gray": {
+      "recurring": [
+        {
+          "day": "Wednesday",
+          "time": "18:00",
+          "duration": 90,
+          "location": "75 Edge Hill Rd, Milton, MA 02186",
+          "notes": "Cunningham Elementary School gym"
+        },
+        {
+          "day": "Saturday",
+          "time": "08:00",
+          "duration": 90,
+          "location": "187 Blue Hills Pkwy, Milton, MA 02186",
+          "notes": "Tucker Elementary School gym"
         }
       ],
       "adhoc": [],
