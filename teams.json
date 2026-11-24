@@ -131,14 +131,14 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Thursday",
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         }
       ],
       "adhoc": [],
@@ -151,14 +151,14 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Thursday",
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         }
       ],
       "adhoc": [],
@@ -178,7 +178,7 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         }
       ],
       "adhoc": [],
@@ -198,7 +198,7 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         }
       ],
       "adhoc": [],
@@ -211,7 +211,7 @@
           "time": "19:30",
           "duration": 90,
           "location": "75 Edge Hill Rd, Milton, MA 02186",
-          "notes": "Cunningham Elementary School gym"
+          "notes": "Cunningham Elementary School gym (full court)"
         }
       ],
       "adhoc": [],
@@ -224,14 +224,14 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Wednesday",
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         }
       ],
       "adhoc": [],
@@ -244,14 +244,14 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Wednesday",
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         }
       ],
       "adhoc": [],
@@ -264,7 +264,7 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Thursday",
@@ -284,7 +284,7 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Thursday",
@@ -304,14 +304,14 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Wednesday",
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         }
       ],
       "adhoc": [],
@@ -324,7 +324,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Saturday",
@@ -344,7 +344,7 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Saturday",
@@ -404,7 +404,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Saturday",
@@ -424,7 +424,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Saturday",
@@ -484,7 +484,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Saturday",
@@ -544,7 +544,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Saturday",
@@ -604,14 +604,14 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Thursday",
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         }
       ],
       "adhoc": [],
@@ -624,14 +624,14 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         },
         {
           "day": "Thursday",
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 1"
         }
       ],
       "adhoc": [],
@@ -644,7 +644,7 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Thursday",
@@ -664,7 +664,7 @@
           "time": "19:45",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Thursday",
@@ -684,7 +684,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Thursday",
@@ -704,7 +704,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Saturday",
@@ -744,7 +744,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Thursday",
@@ -764,7 +764,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Thursday",
@@ -784,7 +784,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 3"
         },
         {
           "day": "Saturday",
@@ -804,7 +804,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 3"
         },
         {
           "day": "Saturday",
@@ -864,7 +864,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Saturday",
@@ -884,7 +884,7 @@
           "time": "18:15",
           "duration": 90,
           "location": "170 Centre St, Milton, MA 02186",
-          "notes": "Milton Academy ACC Gym"
+          "notes": "Milton Academy ACC Gym, Court 2"
         },
         {
           "day": "Saturday",
