@@ -3535,7 +3535,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         }}
 
         .faq-answer.open {{
-            max-height: 500px;
+            max-height: 1500px;
             padding-top: var(--spacing-sm);
         }}
 
@@ -3701,7 +3701,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
     </header>
 
     <div class="auto-sync-note" role="status">
-        <span><strong>Automatically Updated:</strong> Schedules are checked hourly during game season. Changes typically appear within an hour of being posted to the league websites. Subscribe once — your calendar stays current automatically.</span>
+        <span><strong>Automatically Updated:</strong> Schedules are checked hourly during game season. Changes typically appear on this page within an hour of being posted to the league websites. Subscribe once and your calendar app picks up changes on its own, though some apps take up to a day (see the FAQ below).</span>
     </div>
 
     <div id="toast" class="toast" role="alert" aria-live="polite">URL Copied!</div>
@@ -3727,10 +3727,10 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         <ul>
             <li><strong>Google Calendar:</strong> Other calendars (+) → From URL → paste URL</li>
             <li><strong>Apple Calendar:</strong> File → New Calendar Subscription → paste URL</li>
-            <li><strong>iPhone/iPad:</strong> Tap "Subscribe" button, or Settings → Calendar → Accounts → Add Subscribed Calendar</li>
+            <li><strong>iPhone/iPad:</strong> Tap the "Subscribe" button, or in the Calendar app tap Calendars → Add Calendar → Add Subscription Calendar → paste URL</li>
             <li><strong>Outlook:</strong> Add calendar → Subscribe from web</li>
         </ul>
-        <p class="tip"><strong>Tip:</strong> Subscribed calendars auto-update periodically (usually every few hours). Data is refreshed hourly during game hours.</p>
+        <p class="tip"><strong>Tip:</strong> Our data is refreshed hourly, but each calendar app re-downloads it on its own schedule: about hourly on Apple devices, up to 12–24 hours on Google Calendar and Outlook. See the FAQ below for how to refresh.</p>
     </section>
 
     {notifications_section}
@@ -3754,7 +3754,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>Calendar links change every season, because each grade and color is a new group of players each year. Find your team above, subscribe to this season's calendar, then remove the old one (see the next question).</p>
+                <p>You are subscribed to last season's calendar. Calendar links change every season, because each grade and color is a new group of players each year. Find your team above, subscribe to this season's calendar, then remove the old one (see the next question).</p>
             </div>
         </div>
 
@@ -3765,21 +3765,22 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             </div>
             <div class="faq-answer">
                 <ul>
-                    <li><strong>iPhone/iPad:</strong> Settings → Calendar → Accounts → tap the subscribed calendar → Delete Account</li>
-                    <li><strong>Google Calendar:</strong> Hover over the calendar in the left sidebar → click ⋮ → Settings → scroll down → Unsubscribe</li>
+                    <li><strong>iPhone/iPad:</strong> Open the Calendar app → tap Calendars at the bottom → tap ⓘ next to the calendar → Unsubscribe, then confirm.</li>
                     <li><strong>Apple Calendar (Mac):</strong> Right-click the calendar in the sidebar → Unsubscribe</li>
+                    <li><strong>Google Calendar:</strong> On a computer, hover over the calendar in the left sidebar → click ⋮ → Settings → scroll down → Unsubscribe. This can't be done from the phone app, but it removes the calendar from your phone too.</li>
                     <li><strong>Outlook:</strong> Right-click the calendar → Remove</li>
                 </ul>
+                <p>Removing a calendar only affects your own devices. You can subscribe again at any time.</p>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
-                Why isn't my team listed?
+                Why did my schedule alerts stop?
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>A team appears once its league has posted a schedule, or once we have its practice times. The leagues post at different times, so a team that plays in only one league may show up later than others. Check back, or look at the official league website.</p>
+                <p>Like calendar links, alert topics change every season. Open the "Get Schedule Change Alerts" section above, copy this season's topic for your team into the ntfy app, and remove last season's. Alerts cover games and practices that are added, cancelled, or change time or location; they do not cover scores.</p>
             </div>
         </div>
 
@@ -3795,21 +3796,22 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
-                Why did my schedule alerts stop?
+                Can I add this calendar to multiple devices?
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>Alert topics also change every season. Open the "Get Schedule Change Alerts" section above, copy this season's topic for your team into the ntfy app, and remove last season's. Alerts cover games and practices that are added, cancelled, or change time or location; they do not cover scores.</p>
+                <p>Yes. If you use a synced calendar account (Google, iCloud, Outlook), add the subscription once and it appears on every device signed in to that account. On Apple devices, a subscription only syncs if it was added to your iCloud account; if it doesn't show up on your other devices, subscribe on each one.</p>
+                <p>To share with another parent or family member, send them the link to this page so they can subscribe themselves.</p>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
-                How often does the schedule data update?
+                Why isn't my team listed?
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>Schedule data is refreshed <strong>hourly from 6 AM to 9 PM ET</strong> during game season, with one overnight update at 2 AM ET. Your calendar app will typically pull these updates every few hours automatically.</p>
+                <p>A team appears once its league has posted a schedule, or once we have its practice times. The leagues post at different times, so a team that plays in only one league may show up later than others. Also check the Boys/Girls filter above the team list, which may be hiding your team. Otherwise check back in a few days, or look at the official league website.</p>
             </div>
         </div>
 
@@ -3820,20 +3822,40 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             </div>
             <div class="faq-answer">
                 <ul>
-                    <li>The league schedule may not be posted yet — check the official league website</li>
-                    <li>Your calendar app may take up to 24 hours to sync initially</li>
-                    <li>Try refreshing the calendar manually in your app's settings</li>
+                    <li>If your team's games aren't listed on this page either, the league hasn't posted the schedule yet — check the official league website</li>
+                    <li>If the games are on this page but not in your calendar, your calendar app hasn't downloaded them yet. A new subscription can take up to 24 hours to fill in, especially on Google Calendar and Outlook — see "How do I refresh my calendar to get the latest schedule?"</li>
+                    <li>Make sure the calendar is switched on (checked) in your calendar app's list of calendars</li>
+                    <li>If the calendar shows a "Calendar moved" event, you are subscribed to last season's link — see the first question</li>
                 </ul>
             </div>
         </div>
 
         <div class="faq-item">
             <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
-                Can I add this calendar to multiple devices?
+                How often does the schedule data update?
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>Yes! If you use a synced calendar service (Google, iCloud, Outlook), just add the subscription on one device and it will appear on all your synced devices automatically.</p>
+                <p>Schedule data is refreshed <strong>hourly from 6 AM to 9 PM ET</strong> during game season, with one overnight update at 2 AM ET. This page always shows the latest data.</p>
+                <p>The calendar on your phone or computer is a separate step: your calendar app decides when to re-download the schedule, and we can't control that. Apple Calendar usually picks up changes within an hour or so, while Google Calendar and Outlook can take <strong>12 to 24 hours</strong>. So a change made this morning may not reach your calendar until tomorrow.</p>
+                <p>For same-day changes, don't rely on the calendar alone: check this page, or turn on schedule change alerts in the "Get Schedule Change Alerts" section above, which notify you as soon as we see a change.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                How do I refresh my calendar to get the latest schedule?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <ul>
+                    <li><strong>iPhone/iPad:</strong> Open the Calendar app → tap Calendars at the bottom → pull down on the list to refresh. To make it check more often, go to Settings → Apps → Calendar → Calendar Accounts → Fetch New Data (on older iOS versions: Settings → Calendar → Accounts → Fetch New Data) and choose a shorter interval.</li>
+                    <li><strong>Apple Calendar (Mac):</strong> Choose View → Refresh Calendars (⌘R). To set how often it checks, right-click the calendar in the sidebar → Get Info → Auto-refresh, and pick "Every hour" or shorter.</li>
+                    <li><strong>Google Calendar:</strong> There is no refresh button for subscribed calendars. Google re-checks them on its own schedule, which can take 12 hours or more, and reloading the page or app doesn't speed that up. If you need the change now, unsubscribe and add the calendar again, though even that isn't guaranteed to be immediate.</li>
+                    <li><strong>Outlook.com and the new Outlook:</strong> Also no refresh button. Microsoft aims to update subscribed calendars about every 3 hours, but says it can take more than 24. Removing the calendar and subscribing again forces a fresh copy.</li>
+                    <li><strong>Classic Outlook (Windows desktop):</strong> Try the Send/Receive tab → Send/Receive All Folders (F9). If the calendar still doesn't update, remove it and subscribe again.</li>
+                </ul>
+                <p>If your calendar still looks out of date after refreshing, compare it with the games listed on this page. If this page is wrong too, the league hasn't posted the change yet.</p>
             </div>
         </div>
 
@@ -3843,33 +3865,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>Location data comes directly from the league websites. If a location is missing or wrong, it needs to be corrected there first. Always verify game locations before traveling.</p>
-            </div>
-        </div>
-
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
-                Why doesn't my team show a coach name?
-                <span class="arrow" aria-hidden="true">▼</span>
-            </div>
-            <div class="faq-answer">
-                <p>Coach names are manually configured and we've only added the ones we know about. If you'd like your coach added, please <a href="https://github.com/aknowles/ssbball/issues">submit a GitHub issue</a> with your team (grade, gender, color) and coach name.</p>
-            </div>
-        </div>
-
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
-                How do I update practice times?
-                <span class="arrow" aria-hidden="true">▼</span>
-            </div>
-            <div class="faq-answer">
-                <p>Practice schedules are crowdsourced and we rely on coaches/parents to keep them up to date. To request a change:</p>
-                <ul>
-                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=cancel-practice.yml">Cancel a practice</a></li>
-                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=modify-practice.yml">Modify a practice</a> (change time, location, or duration)</li>
-                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=add-practice.yml">Add a practice</a> (schedule an extra one-time practice)</li>
-                </ul>
-                <p>A maintainer will review and approve changes before they take effect.</p>
+                <p>Game locations come directly from the league websites, and leagues sometimes post a game before its gym is confirmed. If a location is missing or wrong, it has to be corrected by the league first; the fix then flows through here automatically. Always verify game locations before traveling.</p>
             </div>
         </div>
 
@@ -3880,10 +3876,39 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             </div>
             <div class="faq-answer">
                 <ul>
-                    <li>Practices within 1 hour of a scheduled game are automatically skipped</li>
+                    <li>Practices that overlap a game, or fall within 1 hour of one, are automatically skipped</li>
                     <li>Practices during school vacation weeks are skipped</li>
-                    <li>Your team's practice schedule may not be configured yet — <a href="https://github.com/aknowles/ssbball/issues/new?template=add-practice.yml">submit a request</a> to add it</li>
+                    <li>Someone may have reported that practice as cancelled</li>
+                    <li>We may not have your team's practice schedule yet — <a href="https://github.com/aknowles/ssbball/issues/new?template=add-practice.yml">submit a request</a> to add it</li>
+                    <li>Per-league calendars and the combined calendar both include practices, so if none appear at all, the cause is one of the above</li>
                 </ul>
+                <p>If your coach says a practice is on, it's on: the calendar is a convenience, not the official word.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                How do I update practice times?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Practices are not published by the leagues, so we rely on coaches and parents to tell us about them. To request a change (a free GitHub account is needed):</p>
+                <ul>
+                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=cancel-practice.yml">Cancel a practice</a></li>
+                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=modify-practice.yml">Modify a practice</a> (change time, location, or duration)</li>
+                    <li><a href="https://github.com/aknowles/ssbball/issues/new?template=add-practice.yml">Add a practice</a> (schedule an extra one-time practice)</li>
+                </ul>
+                <p>A maintainer reviews each request before it takes effect, so allow some time. For a last-minute change, go by what your coach tells you.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                Why doesn't my team show a coach name?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <p>Coach names are entered by hand, and we've only added the ones we know about. To add or correct one, <a href="https://github.com/aknowles/ssbball/issues">submit a GitHub issue</a> with your team (grade, boys or girls, color) and the coach's name.</p>
             </div>
         </div>
 
@@ -3893,7 +3918,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>Please submit an issue on our <a href="https://github.com/aknowles/ssbball/issues">GitHub Issues page</a>. We appreciate your feedback!</p>
+                <p>Submit an issue on our <a href="https://github.com/aknowles/ssbball/issues">GitHub Issues page</a> (a free GitHub account is needed). Tell us your team and what you expected to see. For a wrong game time or location, check the league website first, since we copy what the league posts.</p>
             </div>
         </div>
     </section>
