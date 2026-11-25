@@ -3727,7 +3727,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         <ul>
             <li><strong>Google Calendar:</strong> Other calendars (+) → From URL → paste URL</li>
             <li><strong>Apple Calendar:</strong> File → New Calendar Subscription → paste URL</li>
-            <li><strong>iPhone/iPad:</strong> Tap the "Subscribe" button, or Settings → Apps → Calendar → Calendar Accounts → Add Account → Other → Add Subscribed Calendar</li>
+            <li><strong>iPhone/iPad:</strong> Tap the "Subscribe" button, or in the Calendar app tap Calendars → Add Calendar → Add Subscription Calendar → paste URL</li>
             <li><strong>Outlook:</strong> Add calendar → Subscribe from web</li>
         </ul>
         <p class="tip"><strong>Tip:</strong> Our data is refreshed hourly, but each calendar app re-downloads it on its own schedule: about hourly on Apple devices, up to 12–24 hours on Google Calendar and Outlook. See the FAQ below for how to refresh.</p>
@@ -3765,7 +3765,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
             </div>
             <div class="faq-answer">
                 <ul>
-                    <li><strong>iPhone/iPad:</strong> Open the Calendar app → tap Calendars at the bottom → tap ⓘ next to the calendar → Unsubscribe. Or go to Settings → Apps → Calendar → Calendar Accounts → Subscribed Calendars → tap the calendar → Delete Account (on older iOS versions: Settings → Calendar → Accounts).</li>
+                    <li><strong>iPhone/iPad:</strong> Open the Calendar app → tap Calendars at the bottom → tap ⓘ next to the calendar → Unsubscribe, then confirm.</li>
                     <li><strong>Apple Calendar (Mac):</strong> Right-click the calendar in the sidebar → Unsubscribe</li>
                     <li><strong>Google Calendar:</strong> On a computer, hover over the calendar in the left sidebar → click ⋮ → Settings → scroll down → Unsubscribe. This can't be done from the phone app, but it removes the calendar from your phone too.</li>
                     <li><strong>Outlook:</strong> Right-click the calendar → Remove</li>
@@ -3800,7 +3800,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>Yes. If you use a synced calendar account (Google, iCloud, Outlook), add the subscription once and it appears on every device signed in to that account. On an iPhone or iPad, choose iCloud as the account when you subscribe; a subscription saved only "on my iPhone" stays on that device.</p>
+                <p>Yes. If you use a synced calendar account (Google, iCloud, Outlook), add the subscription once and it appears on every device signed in to that account. On Apple devices, a subscription only syncs if it was added to your iCloud account; if it doesn't show up on your other devices, subscribe on each one.</p>
                 <p>To share with another parent or family member, send them the link to this page so they can subscribe themselves.</p>
             </div>
         </div>
@@ -3851,9 +3851,9 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 <ul>
                     <li><strong>iPhone/iPad:</strong> Open the Calendar app → tap Calendars at the bottom → pull down on the list to refresh. To make it check more often, go to Settings → Apps → Calendar → Calendar Accounts → Fetch New Data (on older iOS versions: Settings → Calendar → Accounts → Fetch New Data) and choose a shorter interval.</li>
                     <li><strong>Apple Calendar (Mac):</strong> Choose View → Refresh Calendars (⌘R). To set how often it checks, right-click the calendar in the sidebar → Get Info → Auto-refresh, and pick "Every hour" or shorter.</li>
-                    <li><strong>Google Calendar:</strong> There is no refresh button for subscribed calendars. Google re-checks them on its own schedule, typically every 12 to 24 hours, and reloading the page or app doesn't speed that up. If you need the change now, unsubscribe and add the calendar again, though even that isn't guaranteed to be immediate.</li>
-                    <li><strong>Outlook.com and the new Outlook:</strong> Also no refresh button. Microsoft updates subscribed calendars every few hours, and sometimes takes a day or more. Removing the calendar and subscribing again forces a fresh copy.</li>
-                    <li><strong>Classic Outlook (Windows desktop):</strong> Go to the Send/Receive tab → Send/Receive All Folders, or press F9.</li>
+                    <li><strong>Google Calendar:</strong> There is no refresh button for subscribed calendars. Google re-checks them on its own schedule, which can take 12 hours or more, and reloading the page or app doesn't speed that up. If you need the change now, unsubscribe and add the calendar again, though even that isn't guaranteed to be immediate.</li>
+                    <li><strong>Outlook.com and the new Outlook:</strong> Also no refresh button. Microsoft aims to update subscribed calendars about every 3 hours, but says it can take more than 24. Removing the calendar and subscribing again forces a fresh copy.</li>
+                    <li><strong>Classic Outlook (Windows desktop):</strong> Try the Send/Receive tab → Send/Receive All Folders (F9). If the calendar still doesn't update, remove it and subscribe again.</li>
                 </ul>
                 <p>If your calendar still looks out of date after refreshing, compare it with the games listed on this page. If this page is wrong too, the league hasn't posted the change yet.</p>
             </div>
