@@ -955,6 +955,360 @@ def generate_manual_games(config: dict, team_configs: list[dict]) -> list[dict]:
     return games
 
 
+# =============================================================================
+# Tourney Machine (SportsEngine Tourney) tournaments
+# =============================================================================
+# Outside tournaments often publish schedules on tourneymachine.com. Every
+# tournament page lists all of its teams, usually named "<Town> - <Coach>", so
+# one link per tournament is enough to find the town's teams and their games.
+
+TOURNEY_MACHINE_RESULTS = 'https://tourneymachine.com/Public/Results'
+TOURNEY_MACHINE_CACHE = 'tourney_machine.json'
+# Once a tournament's last game is this old, stop re-fetching and keep serving
+# the cached games, so a page that is later taken down doesn't matter.
+TOURNEY_MACHINE_FINAL_AFTER = timedelta(days=2)
+
+
+def _tm_text(fragment: str) -> str:
+    """Strip tags and collapse whitespace in an HTML fragment."""
+    text = re.sub(r'<[^>]+>', ' ', fragment)
+    return re.sub(r'\s+', ' ', html.unescape(text)).strip()
+
+
+def fetch_tourney_machine_page(url: str) -> tuple[str, str]:
+    """Fetch a Tourney Machine page, following share-link redirects.
+
+    Returns (html, final_url). Raises on failure after retries.
+    """
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    last_error = None
+    for attempt in range(3):
+        if attempt:
+            time.sleep(2 * attempt)
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return response.read().decode('utf-8', errors='replace'), response.geturl()
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Tourney Machine fetch failed (attempt {attempt + 1}): {url}: {e}")
+    raise RuntimeError(f"Could not fetch {url}: {last_error}")
+
+
+def parse_tourney_machine_teams(page: str) -> list[dict]:
+    """Parse the team dropdown present on every tournament page."""
+    match = re.search(r'<select[^>]*ui_TextTeam_DropDownList[^>]*>(.*?)</select>', page, re.S)
+    if not match:
+        return []
+    teams = []
+    for team_id, label in re.findall(r'<option value="([^"]+)">(.*?)</option>', match.group(1), re.S):
+        label = _tm_text(label)
+        division = ''
+        div_match = re.search(r'\(Division:\s*(.*)\)\s*$', label)
+        if div_match:
+            division = div_match.group(1).strip()
+            label = label[:div_match.start()].strip()
+        if team_id and label:
+            teams.append({'id': team_id, 'name': label, 'division': division})
+    return teams
+
+
+def parse_tourney_machine_divisions(page: str) -> dict:
+    """Map division name -> division ID from the tournament landing page."""
+    divisions = {}
+    pattern = r'<a[^>]*class="[^"]*tournamentDivision[^"]*"[^>]*IDDivision=(\w+)[^>]*>\s*<div>(.*?)</div>'
+    for division_id, name in re.findall(pattern, page, re.S):
+        divisions[_tm_text(name).lower()] = division_id
+    return divisions
+
+
+def parse_tourney_machine_name(page: str) -> str:
+    """Tournament name from the page header."""
+    match = re.search(r'<a[^>]*ui_Tournament_HyperLink[^>]*>(.*?)</a>', page, re.S)
+    return _tm_text(match.group(1)) if match else ''
+
+
+def parse_tourney_machine_complexes(page: str) -> dict:
+    """Map complex name -> street address from the Places list."""
+    complexes = {}
+    pattern = r'js-list-group-item-place[^>]*>\s*<h4>(.*?)</h4>.*?<address>(.*?)</address>'
+    for name, address in re.findall(pattern, page, re.S):
+        address = re.sub(r'<br\s*/?>', ', ', address)
+        complexes[_tm_text(name)] = re.sub(r'\s*,\s*,*\s*', ', ', _tm_text(address)).strip(', ')
+    return complexes
+
+
+def parse_tourney_machine_games(page: str, team_id: str) -> list[dict]:
+    """Parse the schedule table on a Team.aspx page into raw game records."""
+    complexes = parse_tourney_machine_complexes(page)
+    games = []
+    row_pattern = r"<tr class='schedule_row date_(\d{8})[^']*'\s*data-gameid='([^']*)'[^>]*>(.*?)</tr>"
+    for date_str, game_id, row in re.findall(row_pattern, page, re.S):
+        cells = re.findall(r'<td([^>]*)>(.*?)</td>', row, re.S)
+        if len(cells) < 7:
+            continue
+        game_no = _tm_text(cells[0][1])
+        time_text = _tm_text(re.sub(r'<div class="schedule_row_date".*?</div>', '', cells[1][1], flags=re.S))
+        venue = _tm_text(cells[2][1])
+
+        sides = []
+        for attrs, body in (cells[3], cells[6]):
+            id_match = re.search(r"data-teamid='([^']*)'", attrs)
+            name = _tm_text(re.split(r'<br\s*/?>', body)[0])
+            sides.append((id_match.group(1) if id_match else '', name))
+        scores = [_tm_text(cells[4][1]), _tm_text(cells[5][1])]
+
+        if sides[0][0] == team_id:
+            ours, theirs = 0, 1
+        elif sides[1][0] == team_id:
+            ours, theirs = 1, 0
+        else:
+            continue
+
+        try:
+            game_dt = datetime.strptime(f"{date_str} {time_text}", '%Y%m%d %I:%M %p').replace(tzinfo=EASTERN)
+        except ValueError:
+            logger.info(f"Skipping Tourney Machine game {game_no or game_id}: no time yet ({time_text!r})")
+            continue
+
+        # "STARLAND SPORTSPLEX - Court 5" -> complex name + court
+        complex_name, court = venue, ''
+        for name in sorted(complexes, key=len, reverse=True):
+            if venue.lower().startswith(name.lower()):
+                complex_name, court = name, venue[len(name):].strip(' -')
+                break
+        else:
+            if ' - ' in venue:
+                complex_name, court = (part.strip() for part in venue.rsplit(' - ', 1))
+        address = complexes.get(complex_name, '')
+        display_name = complex_name.title() if complex_name.isupper() else complex_name
+        location = ', '.join(part for part in (display_name, address) if part)
+
+        team_score, opponent_score = scores[ours], scores[theirs]
+        won_lost = ''
+        if team_score.isdigit() and opponent_score.isdigit():
+            diff = int(team_score) - int(opponent_score)
+            won_lost = 'W' if diff > 0 else 'L' if diff < 0 else 'T'
+        else:
+            team_score = opponent_score = ''
+
+        games.append({
+            'datetime': game_dt.isoformat(),
+            'opponent': sides[theirs][1] or 'TBD',
+            'location': location,
+            'court': court,
+            'game_no': game_no,
+            'team_score': team_score,
+            'opponent_score': opponent_score,
+            'won_lost': won_lost
+        })
+    return games
+
+
+def _coach_names(value) -> list[str]:
+    """Coach names from any of the `coaches` config value formats."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list) and value:
+        if isinstance(value[0], list):
+            return [str(v[0]) for v in value if v]
+        return [str(value[0])]
+    return []
+
+
+def match_tourney_machine_team(name: str, division: str, config: dict, team_configs: list[dict]) -> Optional[str]:
+    """Map a Tourney Machine team to a "grade-gender-color" team key.
+
+    Teams are usually entered as "<Town> - <Coach>", so match the coach's
+    surname against the `coaches` config, using the division's gender and
+    grade to tell apart coaches who share a surname. A team playing up a
+    grade still matches as long as the surname is unique. Falls back to a
+    color in the name (e.g. "Milton Red") within the division's grade.
+    """
+    tokens = set(re.findall(r"[a-z']+", name.lower()))
+    div = division.lower()
+    gender = 'F' if 'girl' in div else 'M' if 'boy' in div else None
+    grade_match = re.search(r'(\d+)(?:st|nd|rd|th)', div)
+    grade = grade_match.group(1) if grade_match else None
+
+    candidates = []
+    for key, value in (config.get('coaches') or {}).items():
+        parts = key.split('-')
+        if len(parts) < 3 or (gender and parts[1] != gender):
+            continue
+        surnames = {n.lower().split()[-1] for n in _coach_names(value) if n.strip()}
+        if surnames & tokens:
+            candidates.append(key)
+
+    if not candidates and grade and gender:
+        known = {f"{tc.get('grade')}-{tc.get('gender')}-{tc.get('color')}" for tc in team_configs}
+        candidates = [k for k in known
+                      if k.split('-')[0] == grade and k.split('-')[1] == gender
+                      and '-'.join(k.split('-')[2:]).lower() in tokens]
+
+    if len(candidates) > 1 and grade:
+        same_grade = [k for k in candidates if k.split('-')[0] == grade]
+        candidates = same_grade or candidates
+    if len(candidates) > 1:
+        same_color = [k for k in candidates if '-'.join(k.split('-')[2:]).lower() in tokens]
+        candidates = same_color or candidates
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def fetch_tourney_machine_tournament(entry: dict, config: dict, team_configs: list[dict]) -> dict:
+    """Fetch one tournament: find the town's teams and their games.
+
+    Returns {'name', 'url', 'games': [raw records]}. Raises if any page fails,
+    so a partial schedule is never mistaken for the whole one.
+    """
+    town_name = config.get('town_name', 'Milton')
+    overrides = {str(k).strip().lower(): v for k, v in (entry.get('teams') or {}).items()}
+
+    page, final_url = fetch_tourney_machine_page(entry['url'])
+    id_match = re.search(r'IDTournament=(\w+)', final_url) or re.search(r'IDTournament=(\w+)', page)
+    if not id_match:
+        raise RuntimeError(f"No tournament ID found at {entry['url']}")
+    tournament_id = id_match.group(1)
+    name = entry.get('name') or parse_tourney_machine_name(page) or 'Tournament'
+    tournament_url = f"{TOURNEY_MACHINE_RESULTS}/Tournament.aspx?IDTournament={tournament_id}"
+
+    # Team pages need the division ID, which only the landing page lists
+    # (a share link lands on a single team's page instead).
+    divisions = parse_tourney_machine_divisions(page)
+    if not divisions:
+        page, _ = fetch_tourney_machine_page(tournament_url)
+        divisions = parse_tourney_machine_divisions(page)
+
+    teams = parse_tourney_machine_teams(page)
+    if not teams:
+        raise RuntimeError(f"No team list found for {name}")
+
+    games = []
+    for team in teams:
+        team_key = overrides.get(team['name'].lower()) or overrides.get(team['id'].lower())
+        if not team_key:
+            if not re.match(rf'\s*{re.escape(town_name)}\b', team['name'], re.I):
+                continue
+            team_key = match_tourney_machine_team(team['name'], team['division'], config, team_configs)
+        if not team_key:
+            logger.warning(f"{name}: could not match \"{team['name']}\" ({team['division']}) to a team; "
+                           f"map it with \"teams\" in the tourney_machine config")
+            continue
+
+        division_id = divisions.get(team['division'].lower())
+        if not division_id:
+            raise RuntimeError(f"{name}: no division ID for \"{team['division']}\"")
+        team_url = (f"{TOURNEY_MACHINE_RESULTS}/Team.aspx?IDTournament={tournament_id}"
+                    f"&IDDivision={division_id}&IDTeam={team['id']}")
+        team_page, _ = fetch_tourney_machine_page(team_url)
+        team_games = parse_tourney_machine_games(team_page, team['id'])
+        logger.info(f"{name}: {team['name']} ({team['division']}) -> {team_key}, {len(team_games)} games")
+        for game in team_games:
+            game.update({'team_key': team_key, 'division': team['division'], 'url': team_url})
+            games.append(game)
+
+    return {'name': name, 'url': tournament_url, 'games': games}
+
+
+def get_tourney_machine_games(config: dict, team_configs: list[dict], output_dir: Path) -> list[dict]:
+    """Build game events for the tournaments listed under `tourney_machine`.
+
+    Results are cached in the output directory (and so published with the
+    site). If Tourney Machine can't be reached, the last fetched schedule is
+    reused rather than dropping the games and alerting that they were cancelled.
+    """
+    entries = config.get('tourney_machine') or []
+    if not entries:
+        return []
+
+    cache_path = output_dir / TOURNEY_MACHINE_CACHE
+    cache = {}
+    if cache_path.exists():
+        try:
+            cache = json.loads(cache_path.read_text()).get('tournaments', {})
+        except (json.JSONDecodeError, IOError, AttributeError) as e:
+            logger.warning(f"Error loading Tourney Machine cache: {e}")
+
+    now = datetime.now(EASTERN)
+    tournaments = {}
+    for entry in entries:
+        if isinstance(entry, str):
+            entry = {'url': entry}
+        url = str(entry.get('url', '')).strip()
+        if not url:
+            logger.warning("Skipping tourney_machine entry without a url")
+            continue
+        if not url.startswith('http'):
+            url = f"{TOURNEY_MACHINE_RESULTS}/Tournament.aspx?IDTournament={url}"
+        entry = {**entry, 'url': url}
+
+        cached = cache.get(url)
+        if cached and cached.get('games'):
+            last_game = max(datetime.fromisoformat(g['datetime']) for g in cached['games'])
+            if last_game < now - TOURNEY_MACHINE_FINAL_AFTER:
+                logger.info(f"{cached.get('name', url)}: finished, using saved results")
+                tournaments[url] = cached
+                continue
+        try:
+            tournaments[url] = fetch_tourney_machine_tournament(entry, config, team_configs)
+        except Exception as e:
+            if cached:
+                logger.error(f"Tourney Machine unavailable ({e}); reusing last fetched schedule for {url}")
+                tournaments[url] = cached
+            else:
+                logger.error(f"Tourney Machine unavailable ({e}); no games added for {url}")
+
+    cache_path.write_text(json.dumps({'updated': now.isoformat(), 'tournaments': tournaments}, indent=2))
+
+    team_lookup = {}
+    for tc in team_configs:
+        key = f"{tc.get('grade')}-{tc.get('gender')}-{tc.get('color')}"
+        team_lookup.setdefault(key.lower(), tc)
+
+    town_name = config.get('town_name', 'Milton')
+    games = []
+    for tournament in tournaments.values():
+        for raw in tournament.get('games', []):
+            team_key = raw['team_key']
+            parts = team_key.split('-')
+            if len(parts) < 3:
+                logger.warning(f"Invalid tourney_machine team key: {team_key}")
+                continue
+            grade, gender, color = parts[0], parts[1], '-'.join(parts[2:])
+            tc = team_lookup.get(team_key.lower())
+            notes = ' · '.join(part for part in (
+                raw.get('court', ''),
+                tournament.get('name', ''),
+                raw.get('division', ''),
+                f"Game {raw['game_no']}" if raw.get('game_no') else ''
+            ) if part)
+            games.append({
+                'datetime': datetime.fromisoformat(raw['datetime']),
+                'opponent': raw.get('opponent') or 'TBD',
+                'location': raw.get('location', ''),
+                'directions': '',
+                'team_name': tc.get('team_name', team_key) if tc else f"{town_name} {team_key}",
+                'short_name': tc.get('short_name', team_key) if tc else team_key,
+                'game_type': '',
+                'league': 'Tournament',
+                'grade': str(grade),
+                'gender': gender,
+                'color': tc.get('color', color) if tc else color,
+                'is_tournament': True,
+                'jerseys': {},
+                'team_score': raw.get('team_score', ''),
+                'opponent_score': raw.get('opponent_score', ''),
+                'won_lost': raw.get('won_lost', ''),
+                'notes': notes,
+                'url': raw.get('url', ''),
+                # Handled like hand-entered games: attached to the team's
+                # calendars by grade/gender/color and deduped against leagues.
+                'manual': True,
+                'source': 'tourneymachine'
+            })
+    return games
+
+
 def fetch_url(url: str, headers: dict = None) -> str:
     """Fetch a URL and return content."""
     default_headers = {
@@ -1633,6 +1987,8 @@ def generate_ical(games: list[dict], calendar_name: str, calendar_id: str) -> by
                 desc.append(f"\nDirections: {game['directions']}")
             if game.get('notes'):
                 desc.append(f"\nNote: {game['notes']}")
+            if game.get('url'):
+                desc.append(f"\nLive schedule and results: {game['url']}")
 
         event.add('description', '\n'.join(desc))
         event.add('dtstamp', datetime.now(EASTERN))
@@ -4323,6 +4679,12 @@ def main():
     if manual_games:
         logger.info(f"Added {len(manual_games)} manual games")
         all_games.extend(manual_games)
+
+    # Add games from Tourney Machine tournaments
+    tourney_games = get_tourney_machine_games(config, team_configs, output_dir)
+    if tourney_games:
+        logger.info(f"Added {len(tourney_games)} Tourney Machine games")
+        all_games.extend(tourney_games)
 
     # Standings are looked up by division, not season, so before a league
     # rolls over they still return last season's final records. Only show a

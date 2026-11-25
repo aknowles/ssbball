@@ -223,6 +223,7 @@ def main():
 
         # Manual games are date-specific, so they never carry over
         had_manual_games = bool(config.pop("manual_games", None))
+        had_tournaments = bool(config.pop("tourney_machine", None))
 
         # Write updated config
         with open(args.config, "w") as f:
@@ -236,6 +237,8 @@ def main():
             print("  - Cleared modifications")
         if had_manual_games:
             print("  - Cleared manual games")
+        if had_tournaments:
+            print("  - Cleared Tourney Machine tournaments")
     else:
         print("Preview mode - no changes made.")
         print(f"Run with --apply to update {args.config}")

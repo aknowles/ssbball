@@ -72,6 +72,9 @@ jobs:
           mkdir -p docs
           curl -sf "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/schedule_state.json" \
             -o docs/schedule_state.json || echo "No previous state found (first run or state not yet deployed)"
+          # Last fetched Tourney Machine schedules, reused if that site is unreachable
+          curl -sf "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/tourney_machine.json" \
+            -o docs/tourney_machine.json || echo "No saved tournament schedules found"
 
       - name: Run scraper
         env:

@@ -15,7 +15,7 @@ Calendar links and notification topics include the season, for example `milton-2
 ## How It Works
 
 1. **GitHub Actions** runs hourly during game hours (6 AM - 9 PM ET)
-2. **API calls** fetch schedules from metrowestbball.com and ssybl.org
+2. **API calls** fetch schedules from metrowestbball.com and ssybl.org, plus any Tourney Machine tournaments listed in `teams.json`
 3. **iCal files** are generated and deployed to **GitHub Pages**
 4. Your calendar app automatically fetches updates
 
@@ -70,6 +70,7 @@ The Action will run automatically and discover all your town's teams!
 | `team_aliases` | Map variant team names to canonical colors | See below |
 | `season` | Season start/end dates for practices | See below |
 | `practices` | Recurring practice schedules per team | See below |
+| `tourney_machine` | Tourney Machine tournaments to pull games from | See below |
 
 ### Coaches
 
@@ -157,6 +158,20 @@ Add recurring practice schedules that appear in team calendars alongside games:
 ```
 
 `date`, `time` (24h) and `opponent` are required. Optional: `location`, `notes`, `duration` (minutes, default 60), `home_away` (`"Home"`/`"Away"`), `tournament` (default `true`, shows 🏆). They appear in the team's calendars and on the page, trigger change alerts, and are dropped if a league lists the same game at the same time. `rollover_season.py --apply` clears them.
+
+**Tourney Machine tournaments:** For an outside tournament run on Tourney Machine (SportsEngine Tourney), add one link under a top-level `tourney_machine` key instead of typing games in by hand:
+
+```json
+"tourney_machine": [
+  {"url": "https://tourney-machine.web.app/4eaTgaEl5iStfXsevoSW0Q"}
+]
+```
+
+`url` can be any link to the tournament: a team's "Check out ... on SE Tourney!" share link, or a `tourneymachine.com` tournament or team page. One link covers every team from your town. Each hourly run reads the tournament's team list, picks the teams whose name starts with `town_name`, and matches them to your teams by the coach surname in the name (`"Milton - Byrnes"` → the team whose `coaches` entry is Byrnes), using the division's grade and gender to separate coaches who share a surname. Times, courts, new bracket games and final scores then update on their own.
+
+Optional fields: `name` (overrides the tournament name shown in the notes) and `teams`, to map a team the matcher can't place, keyed by its Tourney Machine name: `"teams": {"Milton Elite": "6-M-Red"}`. Unmatched teams are logged as warnings in the workflow run.
+
+If Tourney Machine can't be reached, the last fetched schedule is reused, and a tournament stops being re-fetched two days after its last game. `rollover_season.py --apply` clears the list.
 
 **Automatic skipping:** Recurring practices are automatically skipped when they:
 - Fall during a blackout period (school vacations)

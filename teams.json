@@ -98,6 +98,12 @@
       }
     ]
   },
+  "tourney_machine": [
+    {
+      "name": "Starland's Thanksgiving Classic",
+      "url": "https://tourneymachine.com/Public/Results/Tournament.aspx?IDTournament=h20261110211558656fa13719b06af42"
+    }
+  ],
   "manual_games": {
     "6-M-White": [
       {
