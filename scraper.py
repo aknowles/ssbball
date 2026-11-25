@@ -3535,7 +3535,7 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
         }}
 
         .faq-answer.open {{
-            max-height: 500px;
+            max-height: 1500px;
             padding-top: var(--spacing-sm);
         }}
 
@@ -3809,7 +3809,26 @@ def generate_index_html(calendars: list[dict], base_url: str, town_name: str, in
                 <span class="arrow" aria-hidden="true">▼</span>
             </div>
             <div class="faq-answer">
-                <p>Schedule data is refreshed <strong>hourly from 6 AM to 9 PM ET</strong> during game season, with one overnight update at 2 AM ET. Your calendar app will typically pull these updates every few hours automatically.</p>
+                <p>Schedule data is refreshed <strong>hourly from 6 AM to 9 PM ET</strong> during game season, with one overnight update at 2 AM ET. This page always shows the latest data.</p>
+                <p>The calendar on your phone or computer is a separate step: your calendar app decides when to re-download the schedule, and we can't control that. Apple Calendar usually picks up changes within an hour or so, while Google Calendar and Outlook can take <strong>12 to 24 hours</strong>. So a change made this morning may not reach your calendar until tomorrow.</p>
+                <p>For same-day changes, don't rely on the calendar alone: check this page, or turn on schedule change alerts in the "Get Schedule Change Alerts" section above, which notify you as soon as we see a change.</p>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)" tabindex="0" role="button" aria-expanded="false">
+                How do I refresh my calendar to get the latest schedule?
+                <span class="arrow" aria-hidden="true">▼</span>
+            </div>
+            <div class="faq-answer">
+                <ul>
+                    <li><strong>iPhone/iPad:</strong> Open the Calendar app → tap Calendars at the bottom → pull down on the list to refresh. To make it check more often, go to Settings → Apps → Calendar → Calendar Accounts → Fetch New Data (on older iOS versions: Settings → Calendar → Accounts → Fetch New Data) and choose a shorter interval.</li>
+                    <li><strong>Apple Calendar (Mac):</strong> Choose View → Refresh Calendars (⌘R). To set how often it checks, right-click the calendar in the sidebar → Get Info → Auto-refresh, and pick "Every hour" or shorter.</li>
+                    <li><strong>Google Calendar:</strong> There is no refresh button for subscribed calendars. Google re-checks them on its own schedule, typically every 12 to 24 hours, and reloading the page or app doesn't speed that up. If you need the change now, unsubscribe and add the calendar again, though even that isn't guaranteed to be immediate.</li>
+                    <li><strong>Outlook.com and the new Outlook:</strong> Also no refresh button. Microsoft updates subscribed calendars every few hours, and sometimes takes a day or more. Removing the calendar and subscribing again forces a fresh copy.</li>
+                    <li><strong>Classic Outlook (Windows desktop):</strong> Go to the Send/Receive tab → Send/Receive All Folders, or press F9.</li>
+                </ul>
+                <p>If your calendar still looks out of date after refreshing, compare it with the games listed on this page. If this page is wrong too, the league hasn't posted the change yet.</p>
             </div>
         </div>
 
